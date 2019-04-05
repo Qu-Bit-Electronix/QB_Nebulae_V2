@@ -1,0 +1,552 @@
+nebconfigbegin
+ksmps,512
+-B,2048
+-b,512
+sr,48000
+nebconfigend
+
+;- Granular File/Buffer Looping Granular Instrument
+; Qu-bit Electronix
+; Author: Stephen Hensley
+; San Clemente, CA
+; 2017
+;
+; Global Data from External Software
+; All of the following globals are set from external software.
+; Controls are named after their hardware control name.
+; gilen[] - Array containing all file lengths
+; gkpitch - percentage of original pitch. (Negative values allowed)
+; gkspeed - percentage of original speed. (Negative values allowed)
+; gkloopstart - percentage of file to start at.
+; gkloopsize - percentage of post-loopstart size file to play
+; gkdensity - 
+; gkoverlap - 
+; gkmix - percentage of granular sound (inverse percentage of dry audio file)
+; gkdegrade - percentage of degradation of audio output signal
+; gkfilesel - index of table containing audio file data.
+; gkfreeze - binary freeze state value (0 or 1)
+; gknext - trigger input for advancing files
+; gkreset - trigger input for restarting phase to loopstart point.
+; gksource - toggles between live input source/and usb file sources
+; gkrecord - toggles record behavior
+; gkrecordstate - state of the record button, independent of latching state and gate input.
+; gkeol - end of sample 1 or 0 essentially high while the sample is resetting to 0.
+;
+
+;;;;;;;;;;;;;;;;;
+;;;; UDOs ;;;;;;;
+;;;;;;;;;;;;;;;;;
+; The Following UDOs are based on those in the Csound FLOSS Manual on recording and playing buffers
+
+opcode BufRec1, kk, aikkkkkk ; records to a buffer
+ain, ift, krec, kstart, kend, kpos, kwrap, kmode xin
+setksmps 1
+kstartsmps = round(kpos * sr - 1)
+kwrapsmps = round(kstart * sr - 1)
+kendsmps = round(kend*sr) ; end point in samples
+kendsmps = (kendsmps == 0 || kendsmps > ftlen(ift) ? ftlen(ift) : kendsmps)
+knew changed krec ; 1 if record just started
+if krec == 1 then
+    kfinished = 0
+	if knew == 1 then
+		kndx = kstartsmps
+	endif
+	if kndx >= kendsmps - 1 && kwrap == 1 then
+		kndx = kwrapsmps
+	endif
+	if kndx < kendsmps -1 then
+		kndx = kndx + 1
+		kreclength = kndx
+		andx = kndx
+        tabw ain, andx, ift
+	else
+		kfinished = 1
+        kndx = kstartsmps
+	endif
+else
+    if knew == 1 then
+        kfinished = 1 ;end_recording
+        kndx = kstartsmps
+    endif
+endif
+xout kfinished, kreclength
+endop
+
+opcode BufRec2, kk, aaiikkkkkk ; records to a stereo buffer
+ainL, ainR, iftL, iftR, krec, kstart, kend, kpos, kwrap, kmode xin
+kfin, kreclen BufRec1 ainL, iftL, krec, kstart, kend, kpos, kwrap, kmode
+kfin, kreclen BufRec1 ainR, iftR, krec, kstart, kend, kpos, kwrap, kmode
+xout kfin, kreclen
+endop
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Global Tables ;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+giMaxRecordBuffer = 300; Max record time in seconds
+giHamming   ftgen   0, 0, 8192, 20, 9, 1  
+giBartlett  ftgen   0, 0, 8192, 20, 3 
+giBlkHarris ftgen   0, 0, 8192, 20, 5
+giGaussian  ftgen   0, 0, 8192, 20, 6
+;giRectangle ftgen   0, 0, 8192, 20, 9
+giRectangle ftgen   0, 0, 8192, 7, 0, 886, 0, 138, 1, 6144, 1, 138, 0
+giRampUp    ftgen   0, 0, 8192, 7, 0, 7992, 1, 200, 0
+giRampDown  ftgen   0, 0, 8192, 7, 0, 200, 1, 7992, 0
+giWin		ftgen	0, 0, 8192, 20, 9, 1 ; Hamming Window 
+giWinB		ftgen	0, 0, 8192, 20, 9, 1 ; Hamming Window 
+giWinMix	ftgen	0, 0, 8192, 20, 9, 1 ; Hamming Window 
+giCosine	ftgen	0, 0, 8193, 9, 1, 1, 90 ; Cosine Table
+giSquare    ftgen   0, 0, 2048, 7, 1.0, 1023, 1.0, 1, 0.0
+giLine10    ftgen   0, 0, 2048, 7, 0, 2048, 10.0
+giLine1     ftgen   0, 0, 2048, 7, 0, 2048, 1
+giPanL       ftgen   0, 0, 256, -21, 1
+giPanR       ftgen   0, 0, 256, -21, 1
+giPanNone   ftgen   0, 0, 256, -24, giPanL, 0.0, 0.0 ; Edited from 0.5 for non-panned partikkel
+giPanAllL    ftgen   0, 0, 256, -24, giPanL, 0.0, 1.0
+giPanAllR    ftgen   0, 0, 256, -24, giPanR, 0.0, 1.0
+giPanMixL    ftgen   0, 0, 256, -24, giPanL, 0.0, 0.0
+giPanMixR    ftgen   0, 0, 256, -24, giPanR, 0.0, 0.0
+giftEmpty   ftgen   0, 0, giMaxRecordBuffer * sr, 7, 0
+giftL       ftgen   0, 0, giMaxRecordBuffer * sr, 7, 0
+giftR       ftgen   0, 0, giMaxRecordBuffer * sr, 7, 0
+
+instr 1
+
+;;;;;;;;;;;;;;;;;;
+;;;;; inits ;;;;;;
+;;;;;;;;;;;;;;;;;;
+tableiw 254, 1, giPanNone
+tableiw 0, 0, giPanAllL
+tableiw 254, 1, giPanAllL
+tableiw 0, 0, giPanAllR
+tableiw 254, 1, giPanAllR
+tableiw 0, 0, giPanMixL
+tableiw 254, 1, giPanMixL
+tableiw 0, 0, giPanMixR
+tableiw 254, 1, giPanMixR
+krecordedbuff init giMaxRecordBuffer
+kBufferEmpty init 1
+kprevsize init 0
+aoutl init 0
+aoutr init 0
+arecordsync init 0
+; generates right channel ftables for stereo files
+gifile_right_offset = 599
+itempidx = 0
+loop:
+    if gichn[itempidx] == 2 then
+        giwoffset = itempidx + gifile_right_offset
+        giwoffset ftgen (itempidx+gifile_right_offset), 0, 0, 1, gSname[itempidx], 0, 0, 2
+    endif
+    itempidx += 1
+    if (itempidx < 100) igoto loop
+kwindowsel = 0
+gkfilesel_offset = 399
+
+;;;;;;;;;;;;;;;;;;;;;;
+;; control clipping ;;
+;;;;;;;;;;;;;;;;;;;;;;
+if gkloopstart < 0.0015 then
+gkloopstart = 0
+endif
+if gkloopstart > 0.995 then
+gkloopstart = 1
+endif
+if gkloopsize < 0.0015 then
+gkloopsize = 0
+endif
+if gkloopsize > 0.995 then
+gkloopsize = 1
+endif
+if gkmix < 0.01 then
+gkmix = 0.0
+elseif gkmix > 0.99 then
+gkmix = 1.0
+endif
+;;;;;;;;;;;;;;;;;;;
+;; phasor config ;;
+;;;;;;;;;;;;;;;;;;;
+
+; Set Start and Size
+if gksource == 1 then
+    kfilesr = sr
+	klen = krecordedbuff / sr
+    kfilelen = klen
+	kglen = giMaxRecordBuffer
+else
+    kfilesr = gisr[gkfilesel]
+    kfilelen = gilen[gkfilesel]
+    kfilesamps = (kfilelen * kfilesr) * (sr / kfilesr)
+    ;klen = kfilesamps / sr
+	klen = kfilelen; * (kfilesr / sr); Length of Current File in seconds
+	kglen = kfilesamps / sr
+endif
+if klen == 0 then
+    klen = giMaxRecordBuffer
+endif
+kloopstart = (gkloopstart * 0.99) * klen
+kloopscalar = (gkloopsize * 0.9999) + 0.0004
+kloopsize = ((kloopscalar * kloopscalar) * (klen-kloopstart)) * (kfilesr / sr)
+if (kloopsize <= 0.000035) then ; This may be unnecessary because of the kphasorfreq clipping.
+	kloopsize = 0.000035
+endif
+
+; Set Speed
+kspeed = (gkspeed * 8.0) - 4.0
+if abs(kspeed) <= 1.025 && abs(kspeed) >= 0.975 then
+    if kspeed > 0 then
+        kspeed = 1.0
+    else
+        kspeed = -1.0
+    endif
+endif
+
+; Set Freeze
+if (gkfreeze == 1) then
+	kspeed = 0.0
+endif
+
+; Detect Reset
+ksynctrig trigger gkreset, 0.5, 0
+
+if gkrecordstate == 0 then
+    asynctrig = a(ksynctrig)
+endif
+;asynctrig += arecordsync
+
+;kdetectrecordend trigger k(arecordsync), 0.5, 0
+;printf "BAM Record Sync Detected! %d \n", kdetectrecordend, kdetectrecordend
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Phasor Operation ;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; Run Phasor
+kphasorfreq = ((1 / kloopsize) * kspeed)
+if kphasorfreq > sr then
+    kphasorfreq = sr
+endif
+aphs, aphssync syncphasor kphasorfreq, asynctrig, 0.0001
+atime = kloopstart + (kloopsize * aphs)
+agphs = atime / (kglen * (kfilesr / sr)) ; Compensate for SR difference
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Recording Setup ;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+ainl, ainr inch 1, 2
+
+; Alt Recording Features (Record + Control)
+if gkrecordstate == 1 then
+    ; clear buffer 
+    if ksynctrig == 1 then ; Reset!
+        tablecopy giftL, giftEmpty
+        tablecopy giftR, giftEmpty
+        klen = giMaxRecordBuffer
+        kBufferEmpty = 1
+        printf "bam! Zeroed Buffer is empty: %d\n", ksynctrig, kBufferEmpty
+        kmaintainsize = 0
+    endif
+endif
+
+if kBufferEmpty == 1 then
+    krecstart = 0
+    krecend = giMaxRecordBuffer
+    krecwrap = krecstart
+else
+    if gkrecord == 0 then
+        krecwrap = kloopstart
+        ;krecstart = k(agphs)
+        krecstart = k(atime)
+        ;krecend = (kloopsize + kloopstart) * (1 / abs(kspeed))
+        krecend = (kloopsize + kloopstart)
+    endif
+endif
+if gkrecord_alt == 0 then
+    arecL = aoutl
+    arecR = aoutr
+else
+    arecL = ainl
+    arecR = ainr
+endif
+
+;printks "BufferEmpty: %d\tklen: %f\tPlayback phase: %f\trecstart: %f\trecend: %f\trecwrap: %f\n", 0.1, kBufferEmpty, klen, k(aphs), krecstart, krecend, krecwrap
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Recording Process ;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+kfin, kbuffsize BufRec2, arecL, arecR, giftL, giftR, gkrecord, krecstart, krecend, krecwrap, 1, 0
+kfinchanged trigger kfin, 0.5, 0 ; Done Recording
+kfinstarted trigger kfin, 0.5, 1 ; Started Recording
+if kfinchanged == 1 then
+    arecordsync = 1
+    if kmaintainsize == 1 then
+        krecordedbuff = kprevsize
+    else
+        kprevsize = kbuffsize
+        krecordedbuff = kbuffsize
+    endif 
+    kmaintainsize = 1
+    kBufferEmpty = 0
+else
+    if kfinstarted == 1 && kBufferEmpty == 1 then
+        arecordsync = 1
+    else
+        arecordsync = 0
+    endif
+endif
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; mincer/partikkel primary controls ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; pitch setting
+ilogmax = log(32.00)
+ilogmin = log(1.0)
+kfactor = exp(gkpitch * (ilogmax - ilogmin) + ilogmin)
+kpitch = 0.125 * kfactor
+if kpitch <= 1.005 && kpitch >= 0.995 then
+kpitch = 1.0
+endif
+
+; Window Shape
+kwindowsel = int(gkdegrade * 7)
+kwindowblend = gkdegrade * 7
+kwindowchanged changed kwindowsel
+if kwindowchanged == 1 then
+    if kwindowsel < 1  then
+        tablecopy giWin, giRectangle
+        tablecopy giWinB, giHamming
+    elseif kwindowsel < 2 then
+        tablecopy giWin, giHamming
+        tablecopy giWinB, giRampUp
+    elseif kwindowsel < 3 then
+        tablecopy giWin, giRampUp
+        tablecopy giWinB, giBartlett
+    elseif kwindowsel < 4 then
+        tablecopy giWin, giBartlett
+        tablecopy giWinB, giRampDown
+    elseif kwindowsel < 5 then
+        tablecopy giWin, giRampDown
+        tablecopy giWinB, giBlkHarris
+    elseif kwindowsel < 6 then
+        tablecopy giWin, giBlkHarris
+        tablecopy giWinB, giGaussian
+    elseif kwindowsel < 7 then
+        tablecopy giWin, giGaussian
+    endif
+endif
+
+; Window Blend
+kwblend = kwindowblend - kwindowsel
+tablemix giWinMix, 0, 8192, giWin, 0, 1.0-kwblend, giWinB, 0, kwblend
+
+; Density and Overlap
+ilogmaxgfreq = log(2500.0)
+ilogmingfreq = log(0.1667)
+kgrainfreq = exp(gkdensity * (ilogmaxgfreq - ilogmingfreq) + ilogmingfreq)
+kgrainsize = (gkoverlap) * (((1 / kgrainfreq) * 2.0) * 1000) + 1
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; mincer/partikkel secondary controls ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; Prep Pan table
+kpanamount = gkloopsize_alt 
+kpanchanged changed kpanamount
+if kpanchanged == 1 then
+    tablemix giPanMixL, 0, 256, giPanNone, 0, 1.0-kpanamount, giPanAllL, 0, kpanamount
+    tablemix giPanMixR, 0, 256, giPanNone, 0, 1.0-kpanamount, giPanAllR, 0, kpanamount
+    tablew 0, 0, giPanMixL
+    tablew 254, 1, giPanMixL
+    tablew 0, 0, giPanMixR
+    tablew 254, 1, giPanMixR
+endif
+
+; Random Pitch
+krandpitchamt = gkloopstart_alt
+krndpitchmod rand (krandpitchamt * 1200)
+
+; Set a lot of parameters for Partikkel
+kdistribution	= gkdensity_alt * 100; periodic grain distribution
+idisttab	= giLine10 ; (default) flat distribution used for grain distribution
+async		= 0				; no sync input
+kenv2amt	= 1				; entirely secondary enveloping
+ienv2tab	= giWinMix		; default secondary envelope (flat)
+;ienv2tab	= giBlkHarris; default secondary envelope (flat)
+ienv_attack	= -1 ;			; default attack envelope (flat)
+ienv_decay	= -1 ;			; default decay envelope (flat)
+ksustain_amount	= .5 ; time (in fraction of grain dur) at sustain level for each grain
+ka_d_ratio	= 0.5 			; balance between attack and decay time
+kduration	= kgrainsize	; set grain duration relative to grain rate
+iamp		= 0.45		; amp
+igainmasks	= -1			; (default) no gain masking
+ksweepshape	= 0				; shape of frequency sweep (0=no sweep)
+iwavfreqstarttab = -1		; frequency sweep start table
+iwavfreqendtab	= -1		; frequency sweep end table
+ifmamptab	= -1			; default FM scaling (=1)
+kfmenv		= giWin		; default FM envelope (flat)
+icosine		= giCosine		; cosine ftable
+kTrainCps	= 1				; grain rate for single-cycle trainlet in each grain
+knumpartials	= 1			; number of partials in trainlet
+kchroma		= 1				; balance of partials in trainlet
+krandommask	= 0				; no random grain masking
+iwaveamptab	= -1			; mix of all 4 sourcve waveforms and no amp for trainlets
+asamplepos1 = agphs
+asamplepos2 = agphs
+asamplepos3 = agphs
+asamplepos4 = agphs ;random klow, khigh
+kwavekey1	= 1				; original key for source waveform
+kwavekey2	= 1 
+kwavekey3	= 1 
+kwavekey4	= 1 
+imax_grains	= 25			; max grains per k period
+
+; Set a few parameters for mincer
+kphaselock = 1
+ifftsize = 2048
+idecim = 16
+
+;;;;;;;;;;;;;;;;;;;;;;
+;;;;; processing ;;;;;
+;;;;;;;;;;;;;;;;;;;;;;
+
+if gksource == 1 then
+    kwavfreq	= ((1/kglen)*kpitch) * cent(krndpitchmod); fundamental frequency of source waveform
+    awavfm = 0
+    ;asigL mincer atime, 1.0, kpitch, giftL, kphaselock, ifftsize, idecim 
+    ;asigR mincer atime, 1.0, kpitch, giftR, kphaselock, ifftsize, idecim
+		;fout pvstanal ktimescale, kamp, kpitch, ktap, kdetect, kwrap, ioffset, ifftsize,ihop,idbthresh
+		fsigL pvstanal kspeed, 0.75, kpitch, giftL, 1, 0, 0, 4096, 256, 1
+		fsigR pvstanal kspeed, 0.75, kpitch, giftR, 1, 0, 0, 4096, 256, 1
+		asigL pvsynth fsigL
+		asigR pvsynth fsigR
+    agrainLL, agrainLR partikkel kgrainfreq, kdistribution, idisttab, async, kenv2amt, ienv2tab, \
+            ienv_attack, ienv_decay, ksustain_amount, ka_d_ratio, kduration, iamp, igainmasks, \
+            kwavfreq, ksweepshape, iwavfreqstarttab, iwavfreqendtab, awavfm, \
+            ifmamptab, kfmenv, icosine, kTrainCps, knumpartials, \
+            kchroma, giPanMixL, krandommask, giftL, giftL, giftL, giftL, \
+            iwaveamptab, asamplepos1, asamplepos2, asamplepos3, asamplepos4, \
+            kwavekey1, kwavekey2, kwavekey3, kwavekey4, imax_grains 
+
+    agrainRL, agrainRR partikkel kgrainfreq, kdistribution, idisttab, async, kenv2amt, ienv2tab, \
+            ienv_attack, ienv_decay, ksustain_amount, ka_d_ratio, kduration, iamp, igainmasks, \
+            kwavfreq, ksweepshape, iwavfreqstarttab, iwavfreqendtab, awavfm, \
+            ifmamptab, kfmenv, icosine, kTrainCps, knumpartials, \
+            kchroma, giPanMixR, krandommask, giftR, giftR, giftR, giftR, \
+            iwaveamptab, asamplepos1, asamplepos2, asamplepos3, asamplepos4, \
+            kwavekey1, kwavekey2, kwavekey3, kwavekey4, imax_grains 
+
+    agrainL = agrainLL + agrainRR
+    agrainR = agrainRL + agrainLR
+    if kBufferEmpty == 1 then
+        agrainL = 0
+        agrainR = 0
+        asigL = 0
+        asigR = 0
+    endif
+else
+    kwavfreq    = ((1/klen)*kpitch) * cent(krndpitchmod);
+    knumchn = gichn[gkfilesel]
+    kwaveformL = gkfilesel_offset + gkfilesel + 1
+    ;asigL mincer atime, 0.8, kpitch * (kfilesr / sr), kwaveformL, kphaselock, ifftsize, idecim
+		;fsigL pvstanal kspeed, 0.75, kpitch, kwaveformL, 1, 1, 0, 4096, 256, 1
+		;asigL pvsynth fsigL
+		printks "pitch: %f\n", 0.5, kpitch
+		if kpitch > 1.0 then
+			kpitch = 1.0
+		endif
+		asigL pvoc k(atime), kpitch, "audio/pansinesL.pvx"
+		asigR pvoc k(atime), kpitch, "audio/pansinesR.pvx"
+    knumchn = gichn[gkfilesel]
+    if knumchn == 2 then 
+        kwaveformR = gifile_right_offset + gkfilesel
+		;fsigR pvstanal kspeed, 0.75, kpitch, kwaveformR, 1, 1, 0, 4096, 256, 1
+		;asigR pvsynth fsigR
+        ;asigR mincer atime, 0.8, kpitch * (kfilesr / sr), kwaveformR, kphaselock, ifftsize, idecim
+    else
+        kwaveformR = kwaveformL
+        ;asigR = asigL
+    endif 
+    if gksource_alt == 1 then
+        awavfml    	= ainl
+        awavfmr    	= ainr
+    else
+        awavfml     = 0
+        awavfmr     = 0
+    endif
+    agrainLL, agrainLR partikkel kgrainfreq, kdistribution, idisttab, async, kenv2amt, ienv2tab, \
+            ienv_attack, ienv_decay, ksustain_amount, ka_d_ratio, kduration, iamp, igainmasks, \
+            kwavfreq, ksweepshape, iwavfreqstarttab, iwavfreqendtab, awavfml, \
+            ifmamptab, kfmenv, icosine, kTrainCps, knumpartials, \
+            kchroma, giPanMixL, krandommask, kwaveformL, kwaveformL, kwaveformL, kwaveformL, \
+            iwaveamptab, asamplepos1, asamplepos2, asamplepos3, asamplepos4, \
+            kwavekey1, kwavekey2, kwavekey3, kwavekey4, imax_grains, 1
+
+    async2 partikkelsync, 1
+
+    agrainRL, agrainRR partikkel kgrainfreq, kdistribution, idisttab, async2, kenv2amt, ienv2tab, \
+            ienv_attack, ienv_decay, ksustain_amount, ka_d_ratio, kduration, iamp, igainmasks, \
+            kwavfreq, ksweepshape, iwavfreqstarttab, iwavfreqendtab, awavfmr, \
+            ifmamptab, kfmenv, icosine, kTrainCps, knumpartials, \
+            kchroma, giPanMixR, krandommask, kwaveformR, kwaveformR, kwaveformR, kwaveformR, \
+            iwaveamptab, asamplepos1, asamplepos2, asamplepos3, asamplepos4, \
+            kwavekey1, kwavekey2, kwavekey3, kwavekey4, imax_grains 
+    agrainL = agrainLL + agrainRR
+    agrainR = agrainRL + agrainLR
+endif
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;; mixer ;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;
+if gksource == 1 then
+    kdrylevel = 1 - abs(1 -(2 * gkmix))
+    kmincerlevel = 1 - (2 * gkmix)
+    kpartikkellevel = (2 * gkmix) - 1
+    if kdrylevel > 1 then
+        kdrylevel = 1  
+    elseif kdrylevel < 0 then
+        kdrylevel = 0
+    endif
+    if kmincerlevel > 1 then
+        kmincerlevel = 1  
+    elseif kmincerlevel < 0 then
+        kmincerlevel = 0
+    endif
+    if kpartikkellevel > 1 then
+        kpartikkellevel = 1  
+    elseif kpartikkellevel < 0 then
+        kpartikkellevel = 0
+    endif
+
+    amixl = (ainl * kdrylevel) + (asigL * kmincerlevel) + (agrainL * kpartikkellevel)
+    amixr = (ainr * kdrylevel) + (asigR * kmincerlevel) + (agrainR * kpartikkellevel)
+    aoutl = amixl
+    aoutr = amixr
+else
+    amixl = ((agrainL * gkmix) + (asigL * (1.0 - gkmix))) * (gkdegrade_alt * 2.0)
+    amixr = ((agrainR * gkmix) + (asigR * (1.0 - gkmix))) * (gkdegrade_alt * 2.0)
+    aoutl = amixl
+    aoutr = amixr
+endif
+
+outs aoutl, aoutr ; output
+;;;;;;;;;;;;;;;;;;;;;;;;
+;;; UI related comm. ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;
+
+; Set EOL Pulse Output
+ktrig metro kr
+kphssync max_k aphssync, ktrig, 2
+if kphssync == 1 then
+    gkeol = 1
+endif
+
+; Set Low Size indicator
+if kphasorfreq > 50 then
+    gksizestatus = 1
+else
+    gksizestatus = 0
+endif
+
+endin

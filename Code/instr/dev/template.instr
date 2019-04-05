@@ -1,0 +1,31 @@
+; Template Instrument
+; Qu-bit Electronix
+; Author: Stephen Hensley
+; San Clemente, CA
+; 2017
+;
+; Global Tables
+giCosine	ftgen	0, 0, 8193, 9, 1, 1, 90 ; Cosine Table
+
+; Global Data from External Software
+; All of the following globals are set from external software.
+; Controls are named after their hardware control name.
+; gilen[] - Array containing all file lengths
+; gkpitch - 
+; gkspeed - 
+; gkloopstart - sum of audio input and CV input
+; gkloopsize -  sum of audio input and CV input
+; gkdensity -  sum of audio input and CV input
+; gkoverlap -  sum of audio input and CV input
+; gkmix -  sum of audio input and CV input
+; gkdegrade -  sum of audio input and CV input
+; gkfreeze - button/trigger combination
+; gknext - button/trigger combination
+; gkreset - button/trigger combination
+; gksource - button/trigger combination
+; gkrecord - button/trigger combination
+; gkfilesel - index of table containing audio file data. (Provides access to Audio Files)
+
+instr 1
+; Make amazing instruments!
+endin

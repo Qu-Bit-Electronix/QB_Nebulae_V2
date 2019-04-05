@@ -1,0 +1,3 @@
+#! /bin/bash
+echo "Starting Nebulae"
+sh /home/alarm/QB_Nebulae_V2/Code/scripts/startup.sh &

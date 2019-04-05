@@ -1,0 +1,67 @@
+; Template Instrument
+; Qu-bit Electronix
+; Author: Stephen Hensley
+; San Clemente, CA
+; 2017
+;
+; Global Tables
+giCosine	ftgen	0, 0, 8193, 9, 1, 1, 90 ; Cosine Table
+
+; Global Data from External Software
+; All of the following globals are set from external software.
+; Controls are named after their hardware control name.
+; gilen[] - Array containing all file lengths
+; gkpitch - 
+; gkspeed - 
+; gkloopstart - sum of audio input and CV input
+; gkloopsize -  sum of audio input and CV input
+; gkdensity -  sum of audio input and CV input
+; gkoverlap -  sum of audio input and CV input
+; gkmix -  sum of audio input and CV input
+; gkdegrade -  sum of audio input and CV input
+; gkfreeze - button/trigger combination
+; gknext - button/trigger combination
+; gkreset - button/trigger combination
+; gksource - button/trigger combination
+; gkrecord - button/trigger combination
+; gkfilesel - index of table containing audio file data. (Provides access to Audio Files)
+
+instr 1
+; Make amazing instruments!
+kpch = (gkpitch * 1000) + 30
+;iforce = 0.0001
+;ain vco2 iforce, 0.002
+ain = 0
+ifnconf ftgen 1, 0, 512, 10, 1 ; sine wave
+ifnmatrix ftgen 114, 0, 262144, -23, "matrices/str-512.mat"
+ifntraj ftgen 117, 0, 512, -7, 0, 512, 512
+iInit = 1
+irate = 0.02
+
+ifnvel ftgen 112, 0, 512, -7, 0.02, 512, 0.01
+ifnmass ftgen 113, 0, 512, -7, 1, 512, 0.6
+ifncenter ftgen 115, 0, 512, -7, 1, 256, 0, 256, 1
+ifndamp ftgen 116, 0, 512, -7, 1, 512, 1
+
+kmass = 2
+kstiff = 0.05
+kcenter = 0.1
+kdamp = -0.4
+
+ileft = 0.1
+iright = 0.3
+kpos = 0.2
+kstrength = 0
+
+idisp = 1
+id = 2
+
+scanu iInit, irate, ifnvel,ifnmass,ifnmatrix,ifncenter,ifndamp,kmass,kstiff,kcenter,kdamp,ileft,iright,kpos,kstrength, ain, idisp, id
+aout scans 0.9, kpch, ifntraj, 2
+aout dcblock aout
+
+;aout butterlp aout, kpch * 4
+;aout butterlp aout, kpch * 4
+;aout nreverb aout, .1, .2
+outs aout, aout
+endin

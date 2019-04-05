@@ -1,0 +1,14 @@
+[Unit]
+Description=Starts Nebulae
+DefaultDependencies=false 
+After=local-fs.target
+
+[Service]
+#ExecStart=/home/alarm/QB_Nebulae_V2/Code/scripts/startup.sh
+ExecStart=/home/alarm/checkfirmware.sh
+WorkingDirectory=/
+Restart=on-failure
+#RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target

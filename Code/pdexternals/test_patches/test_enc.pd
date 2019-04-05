@@ -1,0 +1,45 @@
+#N canvas 176 642 1226 606 10;
+#X obj 41 552 print pressed:;
+#X obj 479 74 nebulae_encoder 0;
+#X obj 479 190 s uptick_speed;
+#X obj 537 150 s downtick_speed;
+#X obj 595 121 s pressstate_speed;
+#X obj 746 72 nebulae_encoder 1;
+#X obj 746 188 s uptick_pitch;
+#X obj 804 148 s downtick_pitch;
+#X obj 862 119 s pressstate_pitch;
+#X obj 41 517 pack f f;
+#X obj 94 474 r pressstate_pitch;
+#X obj 41 429 r pressstate_speed;
+#X obj 259 498 print speed_uptick!;
+#X obj 415 499 print speed_downtick!;
+#X obj 254 557 print pitch_uptick!;
+#X obj 415 556 print pitch_downtick!;
+#X obj 258 468 r uptick_speed;
+#X obj 256 524 r uptick_pitch;
+#X obj 415 472 r downtick_speed;
+#X obj 415 526 r downtick_pitch;
+#X obj 1106 69 loadbang;
+#X obj 1106 105 delay 300;
+#X msg 1106 143 \; pd dsp 1 \;;
+#X text 55 47 nebulae_encoder the object takes a single argument 0
+- corresponds to the speed encoder 1 - corresponds to the pitch encoder
+there are three outlets 1 uptick - emits a bang when the encoder has
+been incremented up. 2 downtick - emits a bang when the encoder has
+been incremented down. 3 state - outputs 1 when pressed \, 0 when not.
+;
+#X connect 1 0 2 0;
+#X connect 1 1 3 0;
+#X connect 1 2 4 0;
+#X connect 5 0 6 0;
+#X connect 5 1 7 0;
+#X connect 5 2 8 0;
+#X connect 9 0 0 0;
+#X connect 10 0 9 1;
+#X connect 11 0 9 0;
+#X connect 16 0 12 0;
+#X connect 17 0 14 0;
+#X connect 18 0 13 0;
+#X connect 19 0 15 0;
+#X connect 20 0 21 0;
+#X connect 21 0 22 0;

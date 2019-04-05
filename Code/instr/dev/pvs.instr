@@ -1,0 +1,25 @@
+gkfilesel_offset = 399
+instr 1
+kfileL = gkfilesel_offset + gkfilesel + 1
+klen = gilen[gkfilesel]
+kspeed = ((gkspeed * 8) - 4)
+;kspeed = gkspeed
+kpitch = (gkpitch * 3.875) + 0.125
+aphs phasor 1/klen * kspeed
+kamp = 1.0
+asigL tablekt aphs, kfileL, 1
+fsigL pvsanal asigL, 4096, 512, 4096, 1
+flockL pvslock fsigL, 1
+ftransposedL pvscale flockL, kpitch, 2 
+aoutL pvsynth ftransposedL
+asigR tablekt aphs, kfileL, 1
+fsigR pvsanal asigR, 4096, 512, 4096, 1
+ftransposedR pvscale fsigR, kpitch, 2 
+aoutR pvsynth ftransposedR
+;aout pvoc aphs*klen, 0.125 + (gkpitch * 3.875), "audio/vox.pvx"
+;fsig pvstanal kspeed * klen, kamp, kpitch, kfileL, 1, 1, 0, 4096, 16, 1
+;asig pvsynth fsig
+;aoutL = asig
+;aoutR = asig
+outs aoutL, aoutR
+endin

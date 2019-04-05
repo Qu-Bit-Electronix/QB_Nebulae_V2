@@ -1,0 +1,69 @@
+#N canvas 0 410 1680 995 10;
+#X obj 122 82 netreceive 3000;
+#X text 1173 99 speed_alt will always control the hardware input level
+for Codec's ADC. Users will not have access to that control.;
+#X obj 60 290 route start size density overlap blend window pitch speed
+record file source reset freeze;
+#X obj 474 287 route start_alt size_alt density_alt overlap_alt blend_alt
+window_alt pitch_alt record_alt file_alt source_alt freeze_alt;
+#X text 1167 133 The same is true with reset_alt which will always
+reset all alt controls to their defaults.;
+#X text 1160 166 We'll be adding control over the default values so
+that they can be customized for your pd instruments. (This includes
+the click value for pitch and speed as well.);
+#X text 1180 38 Pitch is scaled 0-1 in a modified logarthmic curve
+to be used for 1V/Octave tracking. (Multiply it by 5 octaves of range
+\, and tracking should be accurate (with a frequency bias).);
+#X obj 61 572 s start;
+#X obj 93 532 s size;
+#X obj 122 487 s density;
+#X obj 151 450 s overlap;
+#X obj 181 418 s blend;
+#X obj 212 384 s window;
+#X obj 242 363 s pitch;
+#X obj 273 336 s speed;
+#X obj 251 471 s record;
+#X obj 269 446 s file;
+#X obj 287 424 s source;
+#X obj 374 429 s reset;
+#X obj 357 450 s freeze;
+#X obj 469 471 s start_alt;
+#X obj 487 446 s size_alt;
+#X obj 502 423 s density_alt;
+#X obj 520 398 s overlap_alt;
+#X obj 603 477 s blend_alt;
+#X obj 629 452 s window_alt;
+#X obj 646 431 s pitch_alt;
+#X obj 867 454 s freeze_alt;
+#X obj 710 478 s record_alt;
+#X obj 728 453 s file_alt;
+#X obj 746 431 s source_alt;
+#X obj 203 695 r window;
+#X obj 203 737 print window;
+#X connect 0 0 2 0;
+#X connect 2 0 7 0;
+#X connect 2 1 8 0;
+#X connect 2 2 9 0;
+#X connect 2 3 10 0;
+#X connect 2 4 11 0;
+#X connect 2 5 12 0;
+#X connect 2 6 13 0;
+#X connect 2 7 14 0;
+#X connect 2 8 15 0;
+#X connect 2 9 16 0;
+#X connect 2 10 17 0;
+#X connect 2 11 18 0;
+#X connect 2 12 19 0;
+#X connect 2 13 3 0;
+#X connect 3 0 20 0;
+#X connect 3 1 21 0;
+#X connect 3 2 22 0;
+#X connect 3 3 23 0;
+#X connect 3 4 24 0;
+#X connect 3 5 25 0;
+#X connect 3 6 26 0;
+#X connect 3 7 28 0;
+#X connect 3 8 29 0;
+#X connect 3 9 30 0;
+#X connect 3 10 27 0;
+#X connect 31 0 32 0;

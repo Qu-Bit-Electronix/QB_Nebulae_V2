@@ -1,0 +1,93 @@
+
+instr 1
+
+	;kblur 		ctrl14 	1, 9, 10, 0.001, 1
+	;kblur 		port 		kblur, 0.06	
+	;kblur = 0.4
+	kblur = gkoverlap
+
+	; ~ kshift ~ 		[Loop Size]
+	;kshift 		ctrl14 	1, 11, 12, 1, 3500
+	;kshift 		port 		kshift, 0.06	
+	;kshift = 200
+  kshift = gkdensity * 3500
+
+	; ~ klowest ~ 		[Pitch]
+	;klowest 		ctrl14 	1, 15, 16, .001, 3500
+	;klowest 		port 		klowest, 0.06	
+	;klowest = 1
+  klowest = gkdegrade * 3500.0
+	
+	; ~ kloopsize ~ 		[Speed]
+	;kloopsize 		ctrl14 	1, 1, 2, 0.01, kend
+	;kloopsize 		port 		kloopsize, 0.06
+
+
+	; ~ kfreqcutoff ~ 	[Grain Rate]
+	;kfreqcutoff 	ctrl7 	1, 70, 0.01, 1
+	;kfreqcutoff 	port 		kfreqcutoff, 0.06		
+	kfreqcutoff = 0.7
+
+	; ~ kampcutoff ~ 	[Glide]
+	;kampcutoff 		ctrl7 	1, 5, .001, 1
+	;kampcutoff 		port 		kampcutoff, 0.06		
+	kampcutoff = 0.5
+
+	; ~ kpitch ~ 		[Grain Size]
+	;kpitch 		ctrl7 	1, 4, 0.01, 1
+	;kpitch 		port 		kpitch, 0.06	
+
+	; ~kmix ~ 			[Mix]
+				initc7 	1, 8, 1
+	;kmix 			ctrl7 	1, 8, 0.01, 1
+	;kmix 			port 		kmix, 0.06	
+
+; Sampler (pitch control/loopend control)
+klen = gilen[0] + 0
+
+klen = gilen[0] + gkfilesel
+kfreeze = 0
+kloopstart = gkloopstart * klen
+kloopsize = gkloopsize * (klen-kloopstart)
+if (kloopsize == 0) then
+	kloopsize = 1
+endif
+iamp = 0.8
+
+if (kfreeze == 1) then
+	gkspeed = 0.0
+endif
+
+
+; Generate FFT from sampler
+ifftsize	=		2048
+ioverlap	=		ifftsize / 4
+iwinsize	=		ifftsize
+iwinshape	=		0 ; Hamming window
+
+aphs phasor (1 / kloopsize) * gkspeed
+atime = kloopstart + (kloopsize * aphs)
+asig mincer atime, iamp, gkpitch, gkfilesel + 1, 1, ifftsize
+
+fftin		pvsanal	asig, ifftsize, ioverlap, iwinsize, iwinshape; fft-analysis of the audio-signal
+
+; Spectral Blurring
+fftblur	pvsblur	fftin, kblur, 1; blur
+
+; Spectral Frequency Shifting
+fshift 		pvshift 	fftblur, kshift, klowest, 1
+
+; Amplitude and Frequency smoothing
+fsmooth 	pvsmooth 	fshift, kfreqcutoff, kampcutoff
+
+; Resynthesize Audio
+aout		pvsynth	fsmooth
+
+; Mix dry/wet signal
+amaster 	ntrpol 	asig*.4, aout, gkmix
+
+; Clip signal
+aclip 	clip 		amaster, 1, .6
+
+		outs		amaster,amaster
+endin

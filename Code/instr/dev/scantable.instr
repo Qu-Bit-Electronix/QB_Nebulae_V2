@@ -1,0 +1,20 @@
+instr 1
+
+if (gkreset == 1) then
+	event "f", 1, 0, 1024, 10, 1
+	gkreset = 0
+endif
+
+ipos ftgen 1, 0, 1024, 10, 1
+imass ftgen 2, 0, 1024, -7, 1, 1024, 1
+istiff ftgen 3, 0, 1024, -7, 50, 64, 100, 64, 0
+idamp ftgen 4, 0, 1024, -7, 1, 1024, 1 
+ivel ftgen 5, 0, 1024, -7, 0, 1024, 0
+iamp = 0.5
+
+kfreq = (gkpitch * 1000) + 25
+
+a1 scantable iamp, kfreq, ipos, imass, istiff, idamp, ivel
+outs a1, a1
+
+endin

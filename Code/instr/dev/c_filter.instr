@@ -1,0 +1,337 @@
+; Template Instrument
+; Qu-bit Electronix
+; Author: Stephen Hensley
+; San Clemente, CA
+; 2017
+;
+; Global Tables
+giCosine	ftgen	0, 0, 8193, 9, 1, 1, 90 ; Cosine Table
+
+; Global Data from External Software
+; All of the following globals are set from external software.
+; Controls are named after their hardware control name.
+; gilen[] - Array containing all file lengths
+; gkpitch - 
+; gkspeed - 
+; gkloopstart - sum of audio input and CV input
+; gkloopsize -  sum of audio input and CV input
+; gkdensity -  sum of audio input and CV input
+; gkoverlap -  sum of audio input and CV input
+; gkmix -  sum of audio input and CV input
+; gkdegrade -  sum of audio input and CV input
+; gkfreeze - button/trigger combination
+; gknext - button/trigger combination
+; gkreset - button/trigger combination
+; gksource - button/trigger combination
+; gkrecord - button/trigger combination
+; gkfilesel - index of table containing audio file data. (Provides access to Audio Files)
+
+;FUNCTION TABLES STORING DATA FOR VARIOUS VOICE FORMANTS
+
+;BASS
+giBF1 ftgen 0, 0, -5, -2, 600,   400, 250,   400,  350
+giBF2 ftgen 0, 0, -5, -2, 1040, 1620, 1750,  750,  600
+giBF3 ftgen 0, 0, -5, -2, 2250, 2400, 2600, 2400, 2400
+giBF4 ftgen 0, 0, -5, -2, 2450, 2800, 3050, 2600, 2675
+giBF5 ftgen 0, 0, -5, -2, 2750, 3100, 3340, 2900, 2950
+
+giBDb1 ftgen 0, 0, -5, -2,   0,   0,   0,   0,   0
+giBDb2 ftgen 0, 0, -5, -2,  -7, -12, -30, -11, -20
+giBDb3 ftgen 0, 0, -5, -2,  -9,  -9, -16, -21, -32
+giBDb4 ftgen 0, 0, -5, -2,  -9, -12, -22, -20, -28
+giBDb5 ftgen 0, 0, -5, -2, -20, -18, -28, -40, -36
+
+giBBW1 ftgen 0, 0, -5, -2,  60,  40,  60,  40,  40
+giBBW2 ftgen 0, 0, -5, -2,  70,  80,  90,  80,  80
+giBBW3 ftgen 0, 0, -5, -2, 110, 100, 100, 100, 100
+giBBW4 ftgen 0, 0, -5, -2, 120, 120, 120, 120, 120
+giBBW5 ftgen 0, 0, -5, -2, 130, 120, 120, 120, 120
+
+;TENOR
+giTF1 ftgen 0, 0, -5, -2,  650,  400,  290,  400,  350
+giTF2 ftgen 0, 0, -5, -2, 1080, 1700, 1870,  800,  600
+giTF3 ftgen 0, 0, -5, -2, 2650, 2600, 2800, 2600, 2700
+giTF4 ftgen 0, 0, -5, -2, 2900, 3200, 3250, 2800, 2900
+giTF5 ftgen 0, 0, -5, -2, 3250, 3580, 3540, 3000, 3300
+
+giTDb1 ftgen 0, 0, -5, -2,   0,   0,   0,   0,   0
+giTDb2 ftgen 0, 0, -5, -2,  -6, -14, -15, -10, -20
+giTDb3 ftgen 0, 0, -5, -2,  -7, -12, -18, -12, -17
+giTDb4 ftgen 0, 0, -5, -2,  -8, -14, -20, -12, -14
+giTDb5 ftgen 0, 0, -5, -2, -22, -20, -30, -26, -26
+
+giTBW1 ftgen 0, 0, -5, -2,  80,  70,  40,  40,  40
+giTBW2 ftgen 0, 0, -5, -2,  90,  80,  90,  80,  60
+giTBW3 ftgen 0, 0, -5, -2, 120, 100, 100, 100, 100
+giTBW4 ftgen 0, 0, -5, -2, 130, 120, 120, 120, 120
+giTBW5 ftgen 0, 0, -5, -2, 140, 120, 120, 120, 120
+
+;COUNTER TENOR
+giCTF1 ftgen 0, 0, -5, -2,  660,  440,  270,  430,  370
+giCTF2 ftgen 0, 0, -5, -2, 1120, 1800, 1850,  820,  630
+giCTF3 ftgen 0, 0, -5, -2, 2750, 2700, 2900, 2700, 2750
+giCTF4 ftgen 0, 0, -5, -2, 3000, 3000, 3350, 3000, 3000
+giCTF5 ftgen 0, 0, -5, -2, 3350, 3300, 3590, 3300, 3400
+
+giTBDb1 ftgen 0, 0, -5, -2,   0,   0,   0,   0,   0
+giTBDb2 ftgen 0, 0, -5, -2,  -6, -14, -24, -10, -20
+giTBDb3 ftgen 0, 0, -5, -2, -23, -18, -24, -26, -23
+giTBDb4 ftgen 0, 0, -5, -2, -24, -20, -36, -22, -30
+giTBDb5 ftgen 0, 0, -5, -2, -38, -20, -36, -34, -30
+
+giTBW1 ftgen 0, 0, -5, -2, 80,   70,  40,  40,  40
+giTBW2 ftgen 0, 0, -5, -2, 90,   80,  90,  80,  60
+giTBW3 ftgen 0, 0, -5, -2, 120, 100, 100, 100, 100
+giTBW4 ftgen 0, 0, -5, -2, 130, 120, 120, 120, 120
+giTBW5 ftgen 0, 0, -5, -2, 140, 120, 120, 120, 120
+
+;ALTO
+giAF1 ftgen 0, 0, -5, -2,  800,  400,  350,  450,  325
+giAF2 ftgen 0, 0, -5, -2, 1150, 1600, 1700,  800,  700
+giAF3 ftgen 0, 0, -5, -2, 2800, 2700, 2700, 2830, 2530
+giAF4 ftgen 0, 0, -5, -2, 3500, 3300, 3700, 3500, 2500
+giAF5 ftgen 0, 0, -5, -2, 4950, 4950, 4950, 4950, 4950
+
+giADb1 ftgen 0, 0, -5, -2,   0,   0,   0,   0,   0
+giADb2 ftgen 0, 0, -5, -2,  -4, -24, -20,  -9, -12
+giADb3 ftgen 0, 0, -5, -2, -20, -30, -30, -16, -30
+giADb4 ftgen 0, 0, -5, -2, -36, -35, -36, -28, -40
+giADb5 ftgen 0, 0, -5, -2, -60, -60, -60, -55, -64
+
+giABW1 ftgen 0, 0, -5, -2, 50,   60,  50,  70,  50
+giABW2 ftgen 0, 0, -5, -2, 60,   80, 100,  80,  60
+giABW3 ftgen 0, 0, -5, -2, 170, 120, 120, 100, 170
+giABW4 ftgen 0, 0, -5, -2, 180, 150, 150, 130, 180
+giABW5 ftgen 0, 0, -5, -2, 200, 200, 200, 135, 200
+
+;SOPRANO
+giSF1 ftgen 0, 0, -5, -2,  800,  350,  270,  450,  325
+giSF2 ftgen 0, 0, -5, -2, 1150, 2000, 2140,  800,  700
+giSF3 ftgen 0, 0, -5, -2, 2900, 2800, 2950, 2830, 2700
+giSF4 ftgen 0, 0, -5, -2, 3900, 3600, 3900, 3800, 3800
+giSF5 ftgen 0, 0, -5, -2, 4950, 4950, 4950, 4950, 4950
+
+giSDb1 ftgen 0, 0, -5, -2,   0,   0,   0,   0,   0
+giSDb2 ftgen 0, 0, -5, -2,  -6, -20, -12, -11, -16
+giSDb3 ftgen 0, 0, -5, -2, -32, -15, -26, -22, -35
+giSDb4 ftgen 0, 0, -5, -2, -20, -40, -26, -22, -40
+giSDb5 ftgen 0, 0, -5, -2, -50, -56, -44, -50, -60
+
+giSBW1 ftgen 0, 0, -5, -2,  80,  60,  60,  70,  50
+giSBW2 ftgen 0, 0, -5, -2,  90,  90,  90,  80,  60
+giSBW3 ftgen 0, 0, -5, -2, 120, 100, 100, 100, 170
+giSBW4 ftgen 0, 0, -5, -2, 130, 150, 120, 130, 180
+giSBW5 ftgen 0, 0, -5, -2, 140, 200, 120, 135, 200
+
+instr 1
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Oscillator test signal 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+kfreq = (gkpitch * 1000) + 30
+
+;a1 vco2 0.8, kfreq
+;a1 pinkish 0.8
+a1 inch 1
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Universal for all controls 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+kcutoff = (gkdensity * 5000.0) + 10.0
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Mix/Crossfade Section
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+kfiltsel = round(gkmix * 7.0)
+if kfiltsel==0 then
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Ladder Filter
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+kladderq = 0.5 + (gkoverlap * 24.5)
+aladder zdf_ladder a1, kcutoff, kladderq
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Buttersworth 2 pole LPF w/ Drive
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;kdgain = 0.5 + (gkoverlap * 0.25)
+kdgain = 0.5 + (gkoverlap * 3.0)
+adist distort1 a1, kdgain, 0.5, 0, 0
+abtr butterlp adist, kcutoff
+
+ablenda = aladder
+ablendb = abtr
+elseif kfiltsel==1 then
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Buttersworth 2 pole LPF w/ Drive
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;kdgain = 0.5 + (gkoverlap * 0.25)
+kdgain = 0.5 + (gkoverlap * 3.0)
+adist distort1 a1, kdgain, 0.5, 0, 0
+abtr butterlp adist, kcutoff
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Comb Filter
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ktime = 1.0 / kcutoff
+kloop = (gkoverlap * 0.99) + 0.01
+acomb vcomb a1, ktime, kloop, 1, 1
+
+ablenda = abtr
+ablendb = acomb
+elseif kfiltsel==2 then
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Comb Filter
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ktime = 1.0 / kcutoff
+kloop = (gkoverlap * 0.99) + 0.01
+acomb vcomb a1, ktime, kloop, 1, 1
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; String Resonator  (network of LPF,APF,Combs)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;kstrgain = (gkoverlap * 1.0) + 0.9
+kstrgain = (gkoverlap * 2.0) - 1.0
+astreson streson a1, kcutoff, kstrgain
+
+ablenda = acomb
+ablendb = astreson
+elseif kfiltsel==3 then
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; String Resonator  (network of LPF,APF,Combs)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;kstrgain = (gkoverlap * 1.0) + 0.9
+kstrgain = (gkoverlap * 2.0) - 1.0
+astreson streson a1, kcutoff, kstrgain
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Modal Filter (simulates mass-spring-damper system)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+kres1 = gkoverlap * 400
+kres2 = gkoverlap * 500
+ares1 mode a1, kcutoff, kres1 
+ares2 mode a1, kcutoff * 1.45, kres2
+ares3 mode a1, kcutoff * 2.09, kres1
+ares4 mode a1, kcutoff * 2.56, kres2
+amodal sum ares1 * 0.25, ares2 * 0.25, ares3 * 0.25, ares4 * 0.25
+
+ablenda = astreson
+ablendb = amodal
+elseif kfiltsel==4 then
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Modal Filter (simulates mass-spring-damper system)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+kres1 = gkoverlap * 400
+kres2 = gkoverlap * 500
+ares1 mode a1, kcutoff, kres1 
+ares2 mode a1, kcutoff * 1.45, kres2
+ares3 mode a1, kcutoff * 2.09, kres1
+ares4 mode a1, kcutoff * 2.56, kres2
+amodal sum ares1 * 0.25, ares2 * 0.25, ares3 * 0.25, ares4 * 0.25
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Formant Filter
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+kfund = kcutoff
+kvow = gkdensity * 0.8
+kbw = gkoverlap * 2.0
+kvoice = round(gkdegrade * 4.0)
+kCF1 tableikt kvow * 5, giBF1+(kvoice*15)
+kCF2 tableikt kvow * 5, giBF1+(kvoice*15) + 1
+kCF3 tableikt kvow * 5, giBF1+(kvoice*15) + 2
+kCF4 tableikt kvow * 5, giBF1+(kvoice*15) + 3
+kCF5 tableikt kvow * 5, giBF1+(kvoice*15) + 4
+kDB1 tableikt kvow * 5, giBF1+(kvoice*15) + 5
+kDB2 tableikt kvow * 5, giBF1+(kvoice*15) + 6
+kDB3 tableikt kvow * 5, giBF1+(kvoice*15) + 7
+kDB4 tableikt kvow * 5, giBF1+(kvoice*15) + 8
+kDB5 tableikt kvow * 5, giBF1+(kvoice*15) + 9
+kBW1 tableikt kvow * 5, giBF1+(kvoice*15) + 10
+kBW2 tableikt kvow * 5, giBF1+(kvoice*15) + 11
+kBW3 tableikt kvow * 5, giBF1+(kvoice*15) + 12
+kBW4 tableikt kvow * 5, giBF1+(kvoice*15) + 13
+kBW5 tableikt kvow * 5, giBF1+(kvoice*15) + 14
+aform1 reson a1, kCF1, kBW1 * kbw, 1 ; formant 1
+aform2 reson a1, kCF2, kBW2 * kbw, 1 ; formant 2
+aform3 reson a1, kCF3, kBW3 * kbw, 1 ; formant 3
+aform4 reson a1, kCF4, kBW4 * kbw, 1 ; formant 4
+aform5 reson a1, kCF5, kBW5 * kbw, 1 ; formant 5
+aformant sum aform1*ampdbfs(kDB1), aform2*ampdbfs(kDB2); ,aform3*ampdbfs(kDB3), aform4*ampdbfs(kDB4), aform5*ampdbfs(kDB5)
+
+ablenda = amodal
+ablendb = aformant
+elseif kfiltsel==5 then
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Formant Filter
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+kfund = kcutoff
+kvow = gkdensity * 0.8
+kbw = gkoverlap * 2.0
+kvoice = round(gkdegrade * 4.0)
+kCF1 tableikt kvow * 5, giBF1+(kvoice*15)
+kCF2 tableikt kvow * 5, giBF1+(kvoice*15) + 1
+kCF3 tableikt kvow * 5, giBF1+(kvoice*15) + 2
+kCF4 tableikt kvow * 5, giBF1+(kvoice*15) + 3
+kCF5 tableikt kvow * 5, giBF1+(kvoice*15) + 4
+kDB1 tableikt kvow * 5, giBF1+(kvoice*15) + 5
+kDB2 tableikt kvow * 5, giBF1+(kvoice*15) + 6
+kDB3 tableikt kvow * 5, giBF1+(kvoice*15) + 7
+kDB4 tableikt kvow * 5, giBF1+(kvoice*15) + 8
+kDB5 tableikt kvow * 5, giBF1+(kvoice*15) + 9
+kBW1 tableikt kvow * 5, giBF1+(kvoice*15) + 10
+kBW2 tableikt kvow * 5, giBF1+(kvoice*15) + 11
+kBW3 tableikt kvow * 5, giBF1+(kvoice*15) + 12
+kBW4 tableikt kvow * 5, giBF1+(kvoice*15) + 13
+kBW5 tableikt kvow * 5, giBF1+(kvoice*15) + 14
+aform1 reson a1, kCF1, kBW1 * kbw, 1 ; formant 1
+aform2 reson a1, kCF2, kBW2 * kbw, 1 ; formant 2
+aform3 reson a1, kCF3, kBW3 * kbw, 1 ; formant 3
+aform4 reson a1, kCF4, kBW4 * kbw, 1 ; formant 4
+aform5 reson a1, kCF5, kBW5 * kbw, 1 ; formant 5
+aformant sum aform1*ampdbfs(kDB1), aform2*ampdbfs(kDB2); ,aform3*ampdbfs(kDB3), aform4*ampdbfs(kDB4), aform5*ampdbfs(kDB5)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Bandpass Filter
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+kbpbw = gkoverlap * 200
+abpf resonr a1, kcutoff, kbpbw 
+ablenda = aformant
+ablendb = abpf
+
+elseif kfiltsel==6 then
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Bandpass Filter
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+kbpbw = gkoverlap * 200
+abpf resonr a1, kcutoff, kbpbw 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Highpass Filter
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+khpres = (gkoverlap * 99) + 1
+ahpf bqrez a1, kcutoff, khpres, 1
+
+ablenda = abpf
+ablendb = ahpf
+else 
+ablenda = 0
+ablendb = 0
+endif
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Blend
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+kmix1 = ((gkmix % 0.125)) * 8.0
+kmix2 = (0.125 - (gkmix % 0.125)) * 8.0
+aoutl = (ablenda * kmix2) + (ablendb * kmix1)
+aoutr = (ablenda * kmix2) + (ablendb * kmix1)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Output Section
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+outs aoutl, aoutr
+endin

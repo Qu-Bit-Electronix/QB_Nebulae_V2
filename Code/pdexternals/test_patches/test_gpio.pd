@@ -1,0 +1,9 @@
+#N canvas 1681 55 826 252 10;
+#X obj 37 37 nebulae_input;
+#X obj 37 151 nebulae_output;
+#X text 48 71 Passing Freeze (I think) Gate Input to The Pulse Output
+;
+#X obj 37 102 tgl 15 0 empty empty empty 17 7 0 10 -262144 -1 -1 0
+1;
+#X connect 0 0 3 0;
+#X connect 3 0 1 0;

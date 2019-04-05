@@ -1,0 +1,257 @@
+; Live Input Test Instrument
+; Qu-bit Electronix
+; Author: Stephen Hensley
+; San Clemente, CA
+; 2017
+;
+; Global Data from External Software
+; All of the following globals are set from external software.
+; Controls are named after their hardware control name.
+; gilen[] - Array containing all file lengths
+; gkpitch - percentage of original pitch. (Negative values allowed)
+; gkspeed - percentage of original speed. (Negative values allowed)
+; gkloopstart - percentage of file to start at.
+; gkloopsize - percentage of post-loopstart size file to play
+; gkdensity - 
+; gkoverlap - 
+; gkmix - percentage of granular sound (inverse percentage of dry audio file)
+; gkdegrade - percentage of degradation of audio output signal
+; gkfilesel - index of table containing audio file data.
+; gkfreeze - binary freeze state value (0 or 1)
+; gknext - trigger input for advancing files
+; gkreset - trigger input for restarting phase to loopstart point.
+; gksource - toggles between live input source/and usb file sources
+; gkrecord - toggles record behavior
+;
+; Global Tables
+giWin		ftgen	0, 0, 8192, 20, 9, 1 ; Hamming Window 
+giCosine	ftgen	0, 0, 8193, 9, 1, 1, 90 ; Cosine Table
+
+; USER OPCODES
+  opcode BufCrt2, ii, io ;creates a stereo buffer
+ilen, inum xin ;ilen = length of the buffer (table) in seconds
+iftL      ftgen     inum, 0, -(ilen*sr), 2, 0
+iftR      ftgen     inum, 0, -(ilen*sr), 2, 0
+          xout      iftL, iftR
+  endop
+
+  opcode BufRec1, k, aikkkk ;records to a buffer
+ain, ift, krec, kstart, kend, kwrap xin
+		setksmps	1
+kendsmps	=		kend*sr ;end point in samples
+kendsmps	=		(kendsmps == 0 || kendsmps > ftlen(ift) ? ftlen(ift) : kendsmps)
+kfinished	=		0
+knew		changed	krec ;1 if record just started
+ if krec == 1 then
+  if knew == 1 then
+kndx		=		kstart * sr - 1 ;first index to write
+  endif
+  if kndx >= kendsmps-1 && kwrap == 1 then
+kndx		=		-1
+  endif
+  if kndx < kendsmps-1 then
+kndx		=		kndx + 1
+andx		=		kndx
+		tabw		ain, andx, ift
+  else
+kfinished	=		1
+  endif
+ endif
+ 		xout		kfinished
+  endop
+
+  opcode BufRec2, k, aaiikkkk ;records to a stereo buffer
+ainL, ainR, iftL, iftR, krec, kstart, kend, kwrap xin
+kfin      BufRec1     ainL, iftL, krec, kstart, kend, kwrap
+kfin      BufRec1     ainR, iftR, krec, kstart, kend, kwrap
+          xout        kfin
+  endop
+
+  opcode BufPlay1, ak, ikkkkkk
+ift, kplay, kspeed, kvol, kstart, kend, kwrap xin
+;kstart = begin of playing the buffer in seconds
+;kend = end of playing in seconds. 0 means the end of the table
+;kwrap = 0: no wrapping. stops at kend (positive speed) or kstart
+;  (negative speed).this makes just sense if the direction does not
+;  change and you just want to play the table once
+;kwrap = 1: wraps between kstart and kend
+;kwrap = 2: wraps between 0 and kend
+;kwrap = 3: wraps between kstart and end of table
+;CALCULATE BASIC VALUES
+kfin		init		0
+iftlen		=		ftlen(ift)/sr ;ftlength in seconds
+kend		=		(kend == 0 ? iftlen : kend) ;kend=0 means end of table
+kstart01	=		kstart/iftlen ;start in 0-1 range
+kend01		=		kend/iftlen ;end in 0-1 range
+kfqbas		=		(1/iftlen) * kspeed ;basic phasor frequency
+;DIFFERENT BEHAVIOUR DEPENDING ON WRAP:
+if kplay == 1 && kfin == 0 then
+ ;1. STOP AT START- OR ENDPOINT IF NO WRAPPING REQUIRED (kwrap=0)
+ if kwrap == 0 then
+; -- phasor freq so that 0-1 values match distance start-end
+kfqrel		=		kfqbas / (kend01-kstart01)
+andxrel	phasor 	kfqrel ;index 0-1 for distance start-end
+; -- final index for reading the table (0-1)
+andx		=		andxrel * (kend01-kstart01) + (kstart01)
+kfirst		init		1 ;don't check condition below at the first k-cycle (always true)
+kndx		downsamp	andx
+kprevndx	init		0
+ ;end of table check:
+  ;for positive speed, check if this index is lower than the previous one
+  if kfirst == 0 && kspeed > 0 && kndx < kprevndx then
+kfin		=		1
+ ;for negative speed, check if this index is higher than the previous one
+  else
+kprevndx	=		(kprevndx == kstart01 ? kend01 : kprevndx)
+   if kfirst == 0 && kspeed < 0 && kndx > kprevndx then
+kfin		=		1
+   endif
+kfirst		=		0 ;end of first cycle in wrap = 0
+  endif
+ ;sound out if end of table has not yet reached
+asig		table3		andx, ift, 1	
+kprevndx	=		kndx ;next previous is this index
+ ;2. WRAP BETWEEN START AND END (kwrap=1)
+ elseif kwrap == 1 then
+kfqrel		=		kfqbas / (kend01-kstart01) ;same as for kwarp=0
+andxrel	phasor 	kfqrel
+andx		=		andxrel * (kend01-kstart01) + (kstart01)
+asig		table3		andx, ift, 1	;sound out
+ ;3. START AT kstart BUT WRAP BETWEEN 0 AND END (kwrap=2)
+ elseif kwrap == 2 then
+kw2first	init		1
+  if kw2first == 1 then ;at first k-cycle:
+		reinit		wrap3phs ;reinitialize for getting the correct start phase
+kw2first	=		0
+  endif
+kfqrel		=		kfqbas / kend01 ;phasor freq so that 0-1 values match distance start-end
+wrap3phs:
+andxrel	phasor 	kfqrel, i(kstart01) ;index 0-1 for distance start-end
+		rireturn	;end of reinitialization
+andx		=		andxrel * kend01 ;final index for reading the table
+asig		table3		andx, ift, 1	;sound out
+ ;4. WRAP BETWEEN kstart AND END OF TABLE(kwrap=3)
+ elseif kwrap == 3 then
+kfqrel		=		kfqbas / (1-kstart01) ;phasor freq so that 0-1 values match distance start-end
+andxrel	phasor 	kfqrel ;index 0-1 for distance start-end
+andx		=		andxrel * (1-kstart01) + kstart01 ;final index for reading the table
+asig		table3		andx, ift, 1	
+ endif
+else ;if either not started or finished at wrap=0
+asig		=		0 ;don't produce any sound
+endif
+  		xout		asig*kvol, kfin
+  endop
+
+  opcode BufPlay2, aak, iikkkkkk ;plays a stereo buffer
+iftL, iftR, kplay, kspeed, kvol, kstart, kend, kwrap xin
+aL,kfin   BufPlay1     iftL, kplay, kspeed, kvol, kstart, kend, kwrap
+aR,kfin   BufPlay1     iftR, kplay, kspeed, kvol, kstart, kend, kwrap
+          xout         aL, aR, kfin
+  endop
+
+giftL, giftR BufCrt2 10
+instr 1
+ainl, ainr inch 1, 2
+
+;klen = gilen[gkfilesel]  ; Length of Current File in samples
+klen = 10
+
+kloopstart = gkloopstart * klen
+kloopsize = gkloopsize * (klen-kloopstart)
+if (kloopsize == 0) then
+	kloopsize = 1
+endif
+iamp = 0.8
+
+
+if (gkfreeze == 1) then
+	gkspeed = 0.0
+endif
+
+asynctrig = 0.0
+if (gkreset == 1) then
+	asynctrig = 1.0
+	gkreset = 0
+endif
+
+; Set phs of playback for mincer and partikkel
+;aphs phasor (1 / kloopsize) * gkspeed
+;ksynctrig trigger ktrig, 0.5, 0
+;asynctrig = a(ksynctrig)
+aphs, aphssync syncphasor (1 / kloopsize) * gkspeed, asynctrig
+atime = kloopstart + (kloopsize * aphs)
+agphs = atime / klen
+
+kloopend = kloopstart + kloopsize
+krecordstate BufRec2 ainl, ainr, giftL, giftR, 1, kloopstart, kloopend, 1 
+
+
+; Set A lot of parameters for Partikkel
+kgrainsize = (gkoverlap * 400) + 0.01
+kgrainfreq = (gkdensity * 70) + 0.001
+;kgrainfreq	= 8; 4 grains per second
+kdistribution	= 0			; periodic grain distribution
+idisttab	= -1			; (default) flat distribution used for grain distribution
+async		= 0				; no sync input
+kenv2amt	= 1				; entirely secondary enveloping
+ienv2tab	= giWin			; default secondary envelope (flat)
+ienv_attack	= -1 ;			; default attack envelope (flat)
+ienv_decay	= -1 ;			; default decay envelope (flat)
+ksustain_amount	= 0.5		; time (in fraction of grain dur) at sustain level for each grain
+ka_d_ratio	= 0.5 			; balance between attack and decay time
+kduration	= kgrainsize	; set grain duration relative to grain rate
+kamp		= 0.5			; amp
+igainmasks	= -1			; (default) no gain masking
+kwavfreq	= (1/klen)*gkpitch; fundamental frequency of source waveform
+ksweepshape	= 0				; shape of frequency sweep (0=no sweep)
+iwavfreqstarttab = -1		; frequency sweep start table
+iwavfreqendtab	= -1		; frequency sweep end table
+awavfm		= ainl			; no FM input
+ifmamptab	= -1			; default FM scaling (=1)
+kfmenv		= giWin		; default FM envelope (flat)
+icosine		= giCosine		; cosine ftable
+kTrainCps	= 1				; grain rate for single-cycle trainlet in each grain
+knumpartials	= 1			; number of partials in trainlet
+kchroma		= 1				; balance of partials in trainlet
+ichannelmasks	= -1		; (default) no channel masking, all grains to output 1
+krandommask	= 0				; no random grain masking
+kwaveform1	= giftL	; source waveforms
+kwaveform2	= giftL
+kwaveform3	= giftR
+kwaveform4	= giftR
+iwaveamptab	= -1			; mix of all 4 sourcve waveforms and no amp for trainlets
+asamplepos1	= agphs			; phase offset for reading source waveforms
+asamplepos2	= agphs
+asamplepos3	= agphs
+asamplepos4	= agphs
+kwavekey1	= 1				; original key for source waveform
+kwavekey2	= 1 
+kwavekey3	= 1 
+kwavekey4	= 1 
+imax_grains	= 25			; max grains per k period
+
+ifftsize = 1024 ; mincer fft size. 
+
+; Actual Instrument Handling
+;asig mincer atime, iamp, gkpitch, gkfilesel + 1, 1, ifftsize
+asigL mincer atime, iamp, gkpitch, giftL, 1, ifftsize
+asigR mincer atime, iamp, gkpitch, giftR, 1, ifftsize
+denorm asigL, asigR
+al, ar reverbsc asigL*0.8, asigR*0.8, 0.95, 10000, sr, 0.2, 1
+agrain	partikkel kgrainfreq, kdistribution, idisttab, async, kenv2amt, ienv2tab, \
+        ienv_attack, ienv_decay, ksustain_amount, ka_d_ratio, kduration, kamp, igainmasks, \
+        kwavfreq, ksweepshape, iwavfreqstarttab, iwavfreqendtab, awavfm, \
+        ifmamptab, kfmenv, icosine, kTrainCps, knumpartials, \
+        kchroma, ichannelmasks, krandommask, kwaveform1, kwaveform2, kwaveform3, kwaveform4, \
+        iwaveamptab, asamplepos1, asamplepos2, asamplepos3, asamplepos4, \
+        kwavekey1, kwavekey2, kwavekey3, kwavekey4, imax_grains 
+
+asigoutl = (asigL * 0.8) + (al * 0.2) 
+asigoutr = (asigR * 0.8) + (ar * 0.2)
+aoutl = ((agrain * gkmix) + (ainl * (1.0 - gkmix))) 
+aoutr = ((agrain * gkmix) + (ainr * (1.0 - gkmix)))
+outs aoutl, aoutr ; output
+
+endin
+

@@ -1,0 +1,53 @@
+nebconfigbegin
+sr,44100
+ksmps,256
+-B,2048
+-b,512
+nebconfigend
+
+instr 1
+; Set Up Right channels
+gifile_left_offset = 400
+gifile_right_offset = 599
+itempidx = 0
+loop:
+    if gichn[itempidx] == 2 then
+        giwoffset = itempidx + gifile_right_offset
+        giwoffset ftgen (itempidx+gifile_right_offset), 0, 0, 1, gSname[itempidx], 0, 0, 2
+    endif
+    itempidx += 1
+    if (itempidx < 100) igoto loop
+; i-time inits.
+iuse_stereo = 1
+ifftsize = 2048
+ihopsize = 16
+
+; ktime setup
+kleftfilesel = gifile_left_offset + gkfilesel
+krightfilesel = gifile_right_offset + gkfilesel
+klen = gilen[gkfilesel]
+kpitch = 1.0 
+;kspeed = (gkspeed * 8) - 4
+kspeed = 1.0000
+
+; phasor setup
+kphasorfreq = 1/klen
+aphs phasor 1/klen 
+atime = (aphs * klen) * kspeed
+
+knchn = gichn[gkfilesel]
+
+printks "left table: %d\t right table: %d\tlen: %f\tnchn: %d\tspeed: %f\n", 0.25, kleftfilesel, krightfilesel, klen, knchn, kspeed
+; mincer
+if iuse_stereo == 1  && knchn == 2 then
+    a1 mincer, atime, 0.75, kpitch, kleftfilesel, 1, ifftsize, ihopsize
+    a2 mincer, atime, 0.75, kpitch, krightfilesel, 1, ifftsize, ihopsize
+else
+    a1 mincer, atime, 0.75, kpitch, kleftfilesel, 1, ifftsize, ihopsize
+    a2 mincer, atime, 0.75, kpitch, kleftfilesel, 1, ifftsize, ihopsize
+endif
+
+; outputs
+outs a1, a2
+endin
+

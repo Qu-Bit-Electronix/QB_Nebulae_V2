@@ -1,0 +1,21 @@
+# See /boot/overlays/README for all available options
+# Custom for Nebulae
+dtparam=audio=off
+gpu_mem=16
+dtparam=i2c_arm=on
+dtparam=i2c_baudrate=1000000
+dtparam=spi=on
+dtparam=i2s=on
+# For Non-AudioInjector Device
+dtoverlay=i2s-mmap
+dtoverlay=rpi-proto
+# Audio Injector Device
+#dtoverlay=audioinjector-wm8731-audio
+# system underclocking
+avoid_warnings=2
+#force_turbo=1
+arm_freq=1200
+gpu_freq_min=75
+gpu_freq=75
+core_freq=400
+over_voltage=0

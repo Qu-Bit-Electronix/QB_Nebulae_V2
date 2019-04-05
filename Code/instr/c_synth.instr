@@ -1,0 +1,45 @@
+nebconfigbegin
+ksmps,4
+-B,2048
+-b,128
+sr,48000
+nebconfigend
+
+/****************
+ synth.instr
+
+ This alternate instrument provides a synth voice.
+ It is a work in progress, and not completely implemented 
+    so you will notice not every control does something.
+
+ * Overview of controls *
+ * Pitch - Frequency
+ * Speed - 
+ * Start - 
+ * Size - 
+ * Density - Filter Cutoff
+ * Overlap - Filter Resonance
+ * Blend - Oscillator Waveform
+ * Window - Sub amount
+ * Record - 
+ * File - 
+ * Source - 
+ * Reset - 
+ * Freeze - 
+ ****************/
+
+instr 1
+ilogmax = log(2560.00)
+ilogmin = log(80.0)
+kfreq = exp(gkpitch * (ilogmax - ilogmin) + ilogmin)
+kcutoff = gkdensity * 6000.0
+kres = gkoverlap * 1.00
+awave1 vco2 0.75, kfreq, 4, 0.01
+awave2 vco2 0.75, kfreq, 10
+asub poscil3 0.75, kfreq / 2.0, -1
+amix = (awave1 * gkblend) + (awave2 * (1.0 - gkblend))
+amix += (asub * gkwindow)
+afilt moogladder amix, kcutoff, kres, 1
+aout balance afilt, asub
+outs aout, aout
+endin

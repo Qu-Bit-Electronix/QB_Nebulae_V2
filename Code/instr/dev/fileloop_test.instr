@@ -1,0 +1,24 @@
+instr 1
+ilock = 1
+ifftsize = 1024
+;gkfilesel = 0 ; This is the file selection from 0 - n
+klen = gilen[0] + gkfilesel
+kfreeze = 0
+kloopstart = gkloopstart * klen
+kloopsize = gkloopsize * (klen-kloopstart)
+if (kloopsize == 0) then
+	kloopsize = 1
+endif
+iamp = 0.8
+
+if (kfreeze == 1) then
+	gkspeed = 0.0
+endif
+
+aphs phasor (1 / kloopsize) * gkspeed
+atime = kloopstart + (kloopsize * aphs)
+asig mincer atime, iamp, gkpitch, gkfilesel + 1, ilock, ifftsize
+denorm asig
+al, ar reverbsc asig*0.8, asig*0.8, 0.95, 10000, sr, 0.2, 1
+outs (asig*0.8) + (al*0.2), (asig*0.8) + (ar * 0.2)
+endin

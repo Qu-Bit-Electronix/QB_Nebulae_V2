@@ -1,0 +1,133 @@
+; Template Instrument
+; Qu-bit Electronix
+; Author: Stephen Hensley
+; San Clemente, CA
+; 2017
+;
+; Global Tables
+giCosine	ftgen	0, 0, 8193, 9, 1, 1, 90 ; Cosine Table
+
+; Global Data from External Software
+; All of the following globals are set from external software.
+; Controls are named after their hardware control name.
+; gilen[] - Array containing all file lengths
+; gkpitch - 
+; gkspeed - 
+; gkloopstart - sum of audio input and CV input
+; gkloopsize -  sum of audio input and CV input
+; gkdensity -  sum of audio input and CV input
+; gkoverlap -  sum of audio input and CV input
+; gkmix -  sum of audio input and CV input
+; gkdegrade -  sum of audio input and CV input
+; gkfreeze - button/trigger combination
+; gknext - button/trigger combination
+; gkreset - button/trigger combination
+; gksource - button/trigger combination
+; gkrecord - button/trigger combination
+; gkfilesel - index of table containing audio file data. (Provides access to Audio Files)
+;giconfn ftgen 111, 0, 128, 27, 12, 1, 24, -1, 36, 0 ; pulse
+;giconfn ftgen 111, 0, 128, 10, 1 ; sine
+giconfn ftgen 111, 0, 128, 21, 1 ; whitenoise
+
+gispgmtrxf1 ftgen 140, 0, 16384, -23, "matrices/string-128.matrix"
+;gispgmtrxf1 ftgen 140, 0, 16384, -23, "matrices/circstr_128.mat"
+gispgmtrxf2 ftgen 141, 0, 16384, -23, "matrices/grid-128,8"
+gispgmtrxf ftgen 142, 0, 16384, -23, "matrices/grid-128,8"
+
+instr 1
+; 1V/Oct stuff
+ilogmax = log(960.0)
+ilogmin = log(30.0)
+kpitch = exp(gkpitch * (ilogmax - ilogmin) + ilogmin)
+; Hammers
+inumhammers = 3
+ihammersine ftgen 201, 0, 128, 10, 1
+ihammerwhite ftgen 202, 0, 128, 21, 1
+ihammerpulse ftgen 203, 0, 128, 27, 12, 1, 24, -1, 36, 0
+
+; Matrices
+inummatrices = 4
+;imattorus ftgen 301, 0, 16384, -23, "128,8-torus"
+;imatstring ftgen 302, 0, 16384, -23, "str-128.mat"
+;imatcircstring ftgen 303, 0, 16384, -23, "circstr_128.mat"
+;imatspiral ftgen 304, 0, 16384, -23, "spiral-8,16,128,2,1over2"
+
+kenveloping init 0
+; Reinit
+if (gkreset == 1) then
+	;event "i", 2, 0, 1
+	;reinit scan_init
+	;goto scan_init
+	kenveloping = 100
+	kenv = 0.10
+	gkreset = 0
+endif
+; Make this so much better.
+if kenveloping > 0 then 
+kenveloping -= 1
+kenv = kenveloping * 0.005
+else
+kenveloping = 0
+kenv = 0
+endif
+
+;iscanrate = 0.05
+; Inits for Scanu
+scan_init:
+    ;scanhammer giconfn, ihammersine, 0, 0
+    ;tablecopy giconfn, ((gkfilesel % inumhammers) + 201)
+    ;scanhammer giconfn, giconfn, 0, 1.0
+    ;tablecopy gispgmtrxf, (round(gkspeed * (inummatrices - 1)) + 301)
+    iscanrate = 0.05
+    ;ivelf ftgen 112, 0, 128, -7, 0.02, 128, 0.01
+    ivelf ftgen 112, 0, 128, -7, 0.12, 128, 0.01
+    imassf ftgen 113, 0, 128, -7, 1, 128, 0.6
+    icentrf ftgen 115, 0, 128, -7, 1, 64, 0, 64, 1
+    idampf ftgen 116, 0, 128, -7, 1, 128, 1
+    itrajn ftgen 117, 0, 128, -7, 0, 128, 128
+    ilpos = 0.01
+    irpos = 0.95
+    idisp = 0 ; draw the masses
+
+id = 8
+
+    ;kspringamount = gkspeed
+		kspringamount = 0.5
+    tablemix gispgmtrxf, 0, 16384, gispgmtrxf1, 0, 1.0-kspringamount, gispgmtrxf2, 0, kspringamount
+;kpos = gkloopstart
+kpos = gkspeed
+kstrngth = kenv + (gkloopstart * 0.25)
+if kstrngth < 0.002 then
+kstrngth = 0.0
+endif
+khammerblend = gkmix
+tablemix giconfn, 0, 128, ihammersine, 0, 1.0-khammerblend, ihammerwhite, 0, khammerblend
+scanhammer giconfn, giconfn, 0, 1.0
+;printk 0.25, kpos
+;kstrngth = (gkmix * gkmix) * 0.25
+;kstrngth = 0.0
+;kmass = (gkdegrade * 5.5) + 0.9
+kmass = 1 + (gkdegrade * 4.0)
+kstif = gkdensity
+kcentr = gkoverlap
+kdamp = (1.0 - gkloopsize) * -1.0
+ainl, ainr inch 1, 2
+a0 = ainl * 10; ain
+; Scan U
+scanu giconfn, iscanrate, ivelf, imassf, gispgmtrxf, icentrf, idampf, kmass, kstif, kcentr, kdamp, ilpos, irpos, kpos, kstrngth, a0, idisp, id
+kenv = 0
+
+; Scan S
+kfreq = kpitch
+kamp = 0.12
+itrajn ftgen 117, 0, 128, -7, 0, 128, 128
+a1 scans kamp, kfreq, itrajn, id, 4
+a1 dcblock2 a1
+
+; Sine Balance Ref
+afilt butlp a1, 4000
+aout clip afilt, 2, 0.7
+; Output 
+outs aout, aout
+
+endin
