@@ -59,7 +59,7 @@ gipeak[] init 100
             """
 
         self.source = instr_bank
-        if self.source is "user":
+        if self.source == "user": # Changed "is" to "==" (danishfurniture)
             self.instr_dir = "/home/alarm/instr/"
         else: #if self.source is "factory":
             self.instr_dir = "/home/alarm/QB_Nebulae_V2/Code/instr/"
@@ -104,7 +104,7 @@ gipeak[] init 100
                 os.system("sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh ro")
         except:
             print "Could not write log of current csd"
-    
+
     def numFiles(self):
         return self.filehandler.numFiles();
 
