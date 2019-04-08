@@ -9,8 +9,8 @@ nebconfigend
  effects.instr
 
  effects is a general purpose multifx processor.
- It is a work in progress, and not completely implemented 
-    so you will notice not every control does something.
+ It is a work in progress, and not completely implemented
+ so you will notice not every control does something.
 
  * Overview of controls *
  * Pitch - Reverb Amount
@@ -20,36 +20,50 @@ nebconfigend
  * Density - Reverb Time
  * Overlap - Reverb Filt
  * Blend - Dry/Wet
- * Window - 
- * Record - 
- * File - 
- * Source - 
- * Reset - 
- * Freeze - 
+ * Window -
+ * Record -
+ * File -
+ * Source -
+ * Reset -
+ * Freeze -
  ****************/
+
 instr 1
-ainl, ainr inch 1, 2
-if gksource == 1 then
+
+ainl, ainr inch 1, 2      ; inch reads from numbered channels in an external audio signal or stream.
+						  ; inch reads from numbered channels determined by the corresponding kchan into the associated ain.
+                          ; If the command-line -i flag is set, sound is read continuously from the audio input stream (e.g. stdin or a soundfile).
+                          ; inch can also be used to receive audio in realtime from the audio interface using -iadc.
+                          ; ain1, ... - input audio signals
+
+if gksource == 1 then	  ; If Source button lit, no audio admitted via l/r input channels
     ainl = 0
     ainr = 0
 endif
+
 ; set parameters
-ktime = (gkloopstart * 1.99) + 0.01
-kdelaytime portk ktime, 0.1
-kfeedback = gkloopsize
+ktime = (gkloopstart * 1.99) + 0.01 ; gkloopstart is the 'start' control on the Neb2
+kdelaytime portk ktime, 0.1	        ; portk — Applies portamento to a step-valued control signal.
+kfeedback = gkloopsize              ; gkloopsize is the 'size' control on the Neb2
+
 ; create a delay line
-abufoutl delayr 2.0
-atap1 deltap3 kdelaytime
-delayw ainl + (atap1 * kfeedback)
+abufoutl delayr 2.0 			     ; delayr — Reads from an automatically established digital delay line
+atap1 deltap3 kdelaytime 		     ; deltap — Taps a delay line at variable offset times.
+delayw ainl + (atap1 * kfeedback) 	 ; delayw — Writes the audio signal to a digital delay line.
+
 ; second delay line
 abufoutr delayr 2.0
 atap2 deltap3 kdelaytime
 delayw ainr + (atap2 * kfeedback)
+
 amixl = (atap1 * gkblend) + (ainl * (1.0 - gkblend))
-amixr = (atap2 * gkblend) + (ainl * (1.0 - gkblend))
-arsendl=amixl*gkwindow
-arsendr=amixr*gkwindow
-denorm arsendl, arsendr
+amixr = (atap2 * gkblend) + (ainr * (1.0 - gkblend)) ; Changed 'ainl' to 'ainr' (danishfurniture)
+
+arsendl = amixl * gkwindow
+arsendr = amixr * gkwindow
+
+denorm arsendl, arsendr				; denorm — Mixes low level noise to a list of a-rate signals to decrease CPU usage
+
 ilogtimemax = log(1.0)
 ilogtimemin = log(0.6)
 kreverbtime = exp(gkdensity * (ilogtimemax - ilogtimemin) + ilogtimemin)
@@ -57,10 +71,33 @@ ilogfiltmax = log(15000.0)
 ilogfiltmin = log(800.0)
 kdampfilt = exp(gkoverlap * (ilogfiltmax - ilogfiltmin) + ilogfiltmin)
 averbl, averbr reverbsc arsendl, arsendr, kreverbtime, kdampfilt, sr, 0.2
+									; See reverbsc below
 
 aoutl = (averbl+ amixl) * 0.85
 aoutr = (averbr + amixr) * 0.85
 aclippedl clip aoutl, 2, 0.92
 aclippedr clip aoutr, 2, 0.92
 outs aclippedl, aclippedr
+
 endin
+
+/****************
+reverbsc — 8 delay line stereo FDN reverb, based on work by Sean Costello
+
+	Description
+8 delay line stereo FDN reverb, with feedback matrix based upon physical modeling scattering junction of 8 lossless waveguides of equal characteristic impedance. Based on Csound orchestra version by Sean Costello.
+
+	Syntax
+aoutL, aoutR reverbsc ainL, ainR, kfblvl, kfco[, israte[, ipitchm[, iskip]]]
+
+	Initialization
+israte (optional, defaults to the orchestra sample rate) -- assume a sample rate of israte. This is normally set to sr, but a different setting can be useful for special effects.
+ipitchm (optional, defaults to 1) -- depth of random variation added to delay times, in the range 0 to 10. The default is 1, but this may be too high and may need to be reduced for held pitches such as piano tones.
+iskip (optional, defaults to zero) -- if non-zero, initialization of the opcode is skipped, whenever possible.
+
+	Performance
+aoutL, aoutR -- output signals for left and right channel
+ainL, ainR -- left and right channel input. Note that having an input signal on either the left or right channel only will still result in having reverb output on both channels, making this unit more suitable for reverberating stereo input than the freeverb opcode.
+kfblvl -- feedback level, in the range 0 to 1. 0.6 gives a good small "live" room sound, 0.8 a small hall, and 0.9 a large hall. A setting of exactly 1 means infinite length, while higher values will make the opcode unstable.
+kfco -- cutoff frequency of simple first order lowpass filters in the feedback loop of delay lines, in Hz. Should be in the range 0 to israte/2 (not sr/2). A lower value means faster decay in the high frequency range.
+****************/
