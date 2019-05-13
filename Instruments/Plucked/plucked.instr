@@ -1,0 +1,99 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; NebulaSound - voltage-controlled Csound in your Qu-bit Nebulae
+;;
+;; PLUCKED
+;; by Jane Freiheit (muffwiggler sebiiksbcs) 2/2014
+;;
+;; Available Controls:
+;; -------------------
+;;	SPEED:			Amp of fundamental
+;;	PITCH:			Pitch
+;;	LOOP START:		Overtone no. (2nd-11th harmonic) or pluck position etc.
+;;	LOOP SIZE:		Amp of overtone
+;;	MIX:			Select model (zither-like / guitar-like / mandolin / 3 other guitar-like models)
+;;	GRAIN SIZE:		Pick
+;;  GRAIN RATE:		Decay
+;;	GLIDE:			-
+;;  RECALL:			Trigger
+;;	FREEZE:			-
+;;
+;; Customization:
+;; --------------
+;; 	none so far
+;;
+;;
+;; Let me know if something doesn't work, you have any suggestions,
+;; or you have a video of your cat rocking to this.
+;;
+
+; Ported from Nebulae_V1 by:
+; Chris Erin
+; github.com/chriserin
+; chris.erin@gmail.com
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+prealloc 2,12
+
+gif1 ftgen 1, 0, 432396, 1, "./audio/plucked.wav", 0.2, 0, 0
+gif2 ftgen 2, 0, 432396, 1, "./audio/plucked.wav", 1.2, 0, 0
+gif3 ftgen 3, 0, 432396, 1, "./audio/plucked.wav", 2.2, 0, 0       ; fqr =  2500
+gif4 ftgen 4, 0, 432396, 1, "./audio/plucked.wav", 3.2, 0, 0
+gif5 ftgen 5, 0, 432396, 1, "./audio/plucked.wav", 4.2, 0, 0
+
+instr 1
+  krecall init 0
+  if (gkrecord == 1 && krecall == 0) then ; turn recall on
+    krecall = 1
+  elseif (gkrecord == 0) then ; turn recall off
+    krecall = 0
+  endif
+
+  kactive active 2
+  if (kactive >=10) then
+    turnoff2 2,1,0.1
+  endif
+
+  ktrig trigger krecall, 0, 0.5
+  if (krecall == 1) then
+    schedkwhen ktrig, 0.005, 10, 2, 0, 12
+    krecall=0
+    kutility=0
+    ktrig=0
+  endif
+endin
+
+instr 2
+
+  kfundamp scale gkdensity, 0, 1
+  kcps scale gkpitch, 0, 5.3 ; the whole tune-pitch-to-1V/oct shebang
+  ;icps = (int(icps*12))/12     ; uncomment this line for equal tempered pitch (boooring!)
+
+  icps pow 2, i(kcps)
+  icps limit icps, 0, 500
+  icps = 32.7031956626 * icps
+  ibuf = 0.5 * icps
+  ibuf limit ibuf, 32, 20000
+  idur = p3
+  imeth = 1    ; simple averaging
+  kamp linseg 0.3, idur, 0
+
+  kmix scale gkblend, 0, 5.99
+  if1 = int(i(kmix))
+
+  ;	ppluck:
+  ktoneamt scale gkoverlap , icps * 8, icps * 48
+  ktonedec scale gkwindow, .5, 8
+  ktoneenv expseg i(ktoneamt), i(ktonedec), (icps * 8)
+  ktoneenv limit ktoneenv, 32, 11000
+  kovtratio scale gkloopsize, 2, 11
+  iovtratio = int(i(kovtratio)) - 0.01
+  kovtmix scale gkloopstart, 0, .75
+  apluck pluck 1, icps, ibuf, if1, imeth
+  apluck2 pluck 1, icps * iovtratio, ibuf * 1.33, if1, imeth
+  apluck  = apluck * kfundamp + kovtmix * apluck2
+  apluck tone apluck, ktoneenv
+  out apluck * kamp
+endin

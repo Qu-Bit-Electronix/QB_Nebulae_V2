@@ -1,0 +1,60 @@
+; Nebulae_FM_Grit_V1.1.csd
+; for the Qu-Bit Electronix Nebulae Eurorack module
+; www.qubitelectronix.com
+;
+; FM Grit was made for gritty FM synthesis via extreme C:M ratios and modulation index ranges.
+;
+; January 7, 2015
+;
+; Collin Russell
+; collinrussellmusic.com
+; collinrussell0912@gmail.com
+
+; Ported from Nebulae_V1 by:
+; Chris Erin
+; github.com/chriserin
+; chris.erin@gmail.com
+
+; Global Reverb
+gaverb init 0
+
+gisinewave ftgen 0, 0, 16384, 10, 1 ; Sine Wave
+
+instr 1
+
+  kverbmix   scale gkspeed, 0, 0.35      ; Verb Mix (Speed)
+  kpitch     scale gkpitch, -2, 3        ; Pitch
+  kpitch     pow  2, kpitch              ; Make pitch 1V/Octave
+  kcar       scale gkblend, 1, 50        ; Carrier Ratio (Mix)
+  kmod       scale gkoverlap, 1, 50      ; Modulator Ratio (Grain Size)
+  kndx       scale gkdensity, 1, 100     ; Modulation Index (Grain Rate)
+  kndx       port kndx, .01
+  kcutoff    scale gkloopstart, 40, 6000 ; Filter Cutoff (Loop Start)
+  kresonance scale gkloopsize, 0, 0.8    ; Resonance (Loop Size)
+
+  ; Initialize Amplitde
+  kamp = 0.95
+
+  if (gkrecord == 0) then ; Amplitude is on
+    kamp = 0
+  elseif (gkrecord == 1) then ; Amplitude is off
+    kamp = 0.95
+  endif
+
+  asig foscili kamp, kpitch, kcar, kmod, kndx, gisinewave ; FM oscillator
+  afilter moogvcf2 asig, kcutoff, kresonance              ; Moog-style ladder filter
+  out (1 - kverbmix) * afilter                            ; Mono output
+  gaverb = gaverb + (afilter * kverbmix)                  ; Reverb send
+
+endin
+
+
+instr 2
+
+  ktime scale gkwindow, 0, 0.7; Reverb Time (Glide)
+
+  averb, averbR reverbsc gaverb, gaverb * 0, ktime, 12000 ; Reverb effect
+  out averb  ; Reverb out
+  gaverb = 0 ; Reverb cleared (Prevents clicks and pops at the end of reverb decay)
+
+endin

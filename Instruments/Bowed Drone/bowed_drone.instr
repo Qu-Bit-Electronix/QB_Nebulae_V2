@@ -1,0 +1,45 @@
+; Nebulae_Bowed_Drone_V1.1.csd
+; for the Qu-Bit Electronix Nebulae Eurorack module
+; www.qubitelectronix.com
+;
+; Bowed_Drone was made for evolving drones with bowed string qualities.
+;
+; April 7, 2015
+;
+; Collin Russell
+; collinrussellmusic.com
+; collinrussell0912@gmail.com
+;
+; Ported from Nebulae_V1 by:
+; Chris Erin
+; github.com/chriserin
+; chris.erin@gmail.com
+
+gisinewave ftgen 0, 0, 4096, 10, 1
+
+instr 1
+
+  kres   scale gkspeed, 0, 0.8        ; Resonance (Speed)
+  kpitch scale gkpitch, 6, 11         ; Pitch
+  kpitch pow  2, kpitch               ; Make pitch 1V/Octave
+  kglide scale gkwindow, 0, 0.175     ; Glide
+  kpitch portk kpitch, kglide
+  kfco   scale gkblend, 20, 6000      ; Cutoff Frequency (Mix)
+  kpres  scale gkdensity, 1, 5        ; Pressure (Grain Rate)
+  krat   scale gkoverlap, 0.025, 0.23 ; Position (Grain Size)
+  kvibf  scale gkloopstart, 0, 10     ; Vibrato Frequency (Loop Start)
+  kvamp  scale gkloopsize, 0, .05     ; Vibrato Amplitude (Loop Size)
+
+  kamp = 0.95
+
+  if (gkrecord == 0) then ; Amplitude is on
+    kamp = 0
+  elseif (gkrecord == 1) then ; Amplitude is off
+    kamp = 0.95
+  endif
+
+  asig wgbow kamp, kpitch, kpres, krat, kvibf, kvamp, gisinewave ; Bowed string
+  afilt moogladder asig, kfco, kres                              ; Moog-style ladder filter
+  out afilt                                                      ; Mono output
+
+endin

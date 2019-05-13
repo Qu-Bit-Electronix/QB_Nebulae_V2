@@ -1,0 +1,103 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; NebulaSound - voltage-controlled Csound in your Qu-bit Nebulae
+;;
+;; 4OSC
+;; by Jane Freiheit (muffwiggler sebiiksbcs) 2/2014
+;;
+;; Available Controls:
+;; -------------------
+;; SPEED:   OSC1/Master Pitch
+;; PITCH:   OSC 2 Pitch
+;; LOOP START:  OSC 3 Pitch
+;; LOOP SIZE:  OSC 4 Pitch
+;; MIX:   OSC 2 Amp
+;; GRAIN SIZE:  OSC 3 Amp
+;;   GRAIN RATE:  OSC 4 Amp
+;; GLIDE:   Glide
+;; Freeze:   Turn OSC 1 on/off
+;;
+;; Customization:
+;; --------------
+;; - Adjust lines 59-62 to define your waveforms.
+;; - Uncomment lines 88-91 to round OSC pitch to "equal-tempered" semitones.
+;;
+;; Let me know if something doesn't work, you have any suggestions,
+;; or you have a video of your cat rocking to this.
+;;
+
+; Ported from Nebulae_V1 by:
+; Chris Erin
+; github.com/chriserin
+; chris.erin@gmail.com
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;initialize sine wave for vco2
+gifn vco2init -1, -1, 1.05, -1, -1, -1
+
+instr 1
+
+  ;;;;;;;WAVEFORM SELECTION  0=saw, 10=square, 12=tri, 14=sine
+  iwave1 = 0
+  iwave2 = 0
+  iwave3 = 0
+  iwave4 = 0
+
+  ;amp of OSC1 depending on freeze button
+  if (gkrecord == 1) then
+    kamp1 = 0.2
+  elseif (gkrecord == 0) then
+    kamp1 = 0
+  endif
+
+  ;get controllers
+  kpitch1  scale gkloopstart, 0, 11.22
+  kpitch2  scale gkloopsize, 0, 5.3
+  kpitch3  scale gkdensity, 0, 5.3
+  kpitch4  scale gkoverlap, 0, 5.3
+
+  ; remove ";" below (not this line!!) to round to "equal-tempered" semitones
+  ;kpitch1  = (int(kpitch1*12))/12
+  ;kpitch2  = (int(kpitch2*12))/12
+  ;kpitch3  = (int(kpitch3*12))/12
+  ;kpitch4  = (int(kpitch4*12))/12
+
+  ; calculate relative ratios
+  kpitch2  = kpitch2 + kpitch1
+  kpitch3  = kpitch3 + kpitch1
+  kpitch4  = kpitch4 + kpitch1
+  kpitch1 pow 2, kpitch1
+  kpitch2 pow 2, kpitch2
+  kpitch3 pow 2, kpitch3
+  kpitch4 pow 2, kpitch4
+
+  ;limit maximum ratios
+  kpitch1 limit kpitch1,0,336
+  kpitch2 limit kpitch2,0,336
+  kpitch3 limit kpitch3,0,336
+  kpitch4 limit kpitch4,0,336
+
+  ;add separate portamento
+  kporta  scale gkblend, 0.002, .35
+  kpitch1 portk kpitch1, kporta
+  kpitch2 portk kpitch2, kporta
+  kpitch3 portk kpitch3, kporta
+  kpitch4 portk kpitch4, kporta
+
+  ;get amplitude controllers, smoothen
+  kamp2 scale gkwindow, 0, .2
+  kamp2 port kamp2, .004
+  kamp3 scale gkwindow, 0, .2
+  kamp3 port kamp3, .004
+  kamp4 scale gkwindow, 0, .2
+  kamp4 port kamp4, .004
+
+  ;band-limited analog modeled oscillators
+  aosc1  vco2  kamp1, 16.3515978313 * kpitch1, iwave1
+  aosc2  vco2  kamp2, 16.3515978313 * kpitch2, iwave2
+  aosc3  vco2  kamp3, 16.3515978313 * kpitch3, iwave3
+  aosc4  vco2  kamp4, 16.3515978313 * kpitch4, iwave4
+
+  ;mix and output
+  out aosc1 + aosc2 + aosc3 + aosc4
+endin

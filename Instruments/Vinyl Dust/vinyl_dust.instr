@@ -1,0 +1,29 @@
+; Nebulae_Vinyl_Dust_V1.1.csd
+; for the Qu-Bit Electronix Nebulae Eurorack module
+; www.qubitelectronix.com
+;
+; This alternate instrument was made for additional vinyl dust and distortion sounds.
+;
+; June 8th, 2015
+;
+; Author:
+; Collin Russell
+; collinrussellmusic.com
+; collinrussell0912@gmail.com
+;
+; Ported from Nebulae_V1 by:
+; Chris Erin
+; github.com/chriserin
+; chris.erin@gmail.com
+
+instr 1
+
+  kdens      scale gkdensity, 2, 2000    ; Density (Grain Rate)
+  kcutoff    scale gkloopstart, 40, 6000 ; Filter Cutoff (Loop Start)
+  kresonance scale gkloopsize, 0, 0.8    ; Resonance (Loop Size)
+
+  asig dust2 0.9, kdens                      ; Noise Source
+  afilter moogvcf2 asig, kcutoff, kresonance ; Moog-style ladder filter
+  out afilter                                ; Mono output
+
+endin

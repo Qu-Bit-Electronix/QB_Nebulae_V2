@@ -1,0 +1,75 @@
+/*
+
+~ Nebulae_MorphingFM.csd ~
+
+Two FM instruments that morph into a single instrument by interpolating
+between the amplitude and frequency of each FM instrument. The amplitudes
+and frequencies of FM#1 are interpolated with those of FM#2, depending
+on the values of kampint and kfrqint, respectively. Anything in between
+0 - 1 of each signal will interpolate amplitude and/or frequency of the
+two signals.
+
+FM#1 Parameters
+	; ~ fm#1 Frequency ~ 	[Speed]
+
+	; ~ fm#1 Carrier ~ 	[Mix]
+
+	; ~ fm#1 Modulator ~ 	[Loop Start]
+
+	; ~ fm#1 Index ~ 	[Glide]
+
+FM#2 Parameters
+	; ~ fm#2 Frequency ~ 	[Pitch]
+
+	; ~ fm#2 Carrier ~	[Grain Size]
+
+	; ~ fm#2 Modulator ~	[Grain Rate]
+
+	; ~ fm#2 Index ~		[Loop Size]
+
+
+	Christopher Konopka
+	www.qubitelectronix.com
+	cskonopka@gmail.com
+
+        Ported from Nebulae_V1 by:
+        Chris Erin
+        github.com/chriserin
+        chris.erin@gmail.com
+*/
+
+gisinewave ftgen 0, 0, 8192, 10, 1
+
+instr 1
+
+; [Nebulae Constants]
+  kfreezeflag init 0
+
+; [Nebulae Controls]
+
+  kFM1freq      scale gkspeed, 0.01, 120   ; ~ fm#1 Frequency ~ [Speed]
+  kFM1carrier   scale gkblend, 0.01, 8     ; ~ fm#1 Carrier ~ [Mix]
+  kFM1modulator scale gkloopstart, 0.01, 8 ; ~ fm#1 Modulator ~ [Loop Start]
+  kFM1index     scale gkwindow, 0.01, 8    ; ~ fm#1 Index ~ [Glide]
+  kFM2freq      scale gkpitch, 0.01, 120   ; ~ fm#2 ~ [Pitch]
+  kFM2carrier   scale gkoverlap, 0.01, 8   ; ~ fm#2 Carrier ~ [Grain Size]
+  kFM2modulator scale gkdensity, 0.01, 8   ; ~ fm#2 Modulator ~ [Grain Rate]
+  kFM2index     scale gkloopsize, 0.01, 8  ; ~ fm#2 Index ~ [Loop Size]
+
+; [Instrument]
+
+  ifftsize  = 1024
+  ioverlap  = ifftsize / 4
+  iwinsize  = ifftsize
+  iwinshape = 1; von-Hann window
+
+  asig1 foscili .5, kFM1freq, kFM1carrier, kFM1modulator, kFM1index, gisinewave    ; FM#1
+  asig2 foscili .5, kFM2freq, kFM2carrier, kFM2modulator, kFM2index, gisinewave    ; FM#2
+  fftin1 pvsanal asig1, ifftsize, ioverlap, iwinsize, iwinshape                    ; FFT-analysis of FM#1
+  fftin2 pvsanal asig2, ifftsize, ioverlap, iwinsize, iwinshape                    ; FFT-analysis of FM#2
+  fmorph pvsmorph fftin1, fftin2, (kFM1freq * 0.01) - 0.2, (kFM2freq * 0.01) - 0.2 ; Interpolation between FM31 and FM#2
+  fblur pvsblur fmorph, .4, 1                                                      ; Added auditory blurring
+  aout pvsynth fmorph                                                              ; Resynthesize
+
+  outs aout, aout
+endin

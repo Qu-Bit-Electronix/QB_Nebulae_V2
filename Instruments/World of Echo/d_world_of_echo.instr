@@ -1,0 +1,66 @@
+nebconfigbegin
+ksmps,1
+-B,512
+-b,128
+sr,48000
+nebconfigend
+
+/****************
+ effects.instr
+
+ effects is a general purpose multifx processor.
+ It is a work in progress, and not completely implemented 
+    so you will notice not every control does something.
+
+ * Overview of controls *
+ * Pitch - Reverb Amount
+ * Speed - Delay Amount
+ * Start - Delay Time
+ * Size - Feedback
+ * Density - Reverb Time
+ * Overlap - Reverb Filt
+ * Blend - Dry/Wet
+ * Window - 
+ * Record - 
+ * File - 
+ * Source - 
+ * Reset - 
+ * Freeze - 
+ ****************/
+instr 1
+ainl, ainr inch 1, 2
+if gksource == 1 then
+    ainl = 0
+    ainr = 0
+endif
+; set parameters
+ktime = (gkloopstart * 1.99) + 0.01
+kdelaytime portk ktime, 0.1
+kfeedback = gkloopsize
+; create a delay line
+abufoutl delayr 2.0
+atap1 deltap3 kdelaytime
+delayw ainl + (atap1 * kfeedback)
+; second delay line
+abufoutr delayr 2.0
+atap2 deltap3 kdelaytime
+delayw ainr + (atap2 * kfeedback)
+amixl = (atap1 * gkblend) + (ainl * (1.0 - gkblend))
+amixr = (atap2 * gkblend) + (ainl * (1.0 - gkblend))
+arsendl=amixl*gkwindow
+arsendr=amixr*gkwindow
+denorm arsendl, arsendr
+ilogtimemax = log(1.0)
+ilogtimemin = log(0.6)
+kreverbtime = exp(gkdensity * (ilogtimemax - ilogtimemin) + ilogtimemin)
+ilogfiltmax = log(15000.0)
+ilogfiltmin = log(800.0)
+kdampfilt = exp(gkoverlap * (ilogfiltmax - ilogfiltmin) + ilogfiltmin)
+averbl, averbr reverbsc arsendl, arsendr, kreverbtime, kdampfilt, sr, 0.2
+
+aoutl = (averbl+ amixl) * 0.85
+aoutr = (averbr + amixr) * 0.85
+aclippedl clip aoutl, 2, 0.92
+aclippedr clip aoutr, 2, 0.92
+outs aclippedl, aclippedr
+endin

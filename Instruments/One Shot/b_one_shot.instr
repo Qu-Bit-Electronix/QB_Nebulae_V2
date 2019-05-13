@@ -1,0 +1,258 @@
+nebconfigbegin
+freeze,triggered,rising
+reset,triggered,rising
+source,triggered,falling
+file,triggered,rising
+record,triggered,rising
+freeze_alt,triggered,rising
+reset_alt,triggered,rising
+file_alt,triggered,rising
+record_alt,triggered,rising
+source_alt,triggered,rising
+start_alt, 1.0
+density_alt, 1.0
+size_alt, 1.0
+overlap_alt, 1.0
+ksmps,16
+nebconfigend
+
+; Square Table for Downsamp
+giSquare ftgen 0, 0, 2048, 7, 1.0, 1023, 1.0, 1, 0.0
+; generates right channel ftables for stereo files
+gifilesel_offset = 399
+gifile_right_offset = 599
+itempidx = 0
+loop:
+    if gichn[itempidx] == 2 then
+        giwoffset = itempidx + gifile_right_offset
+        giwoffset ftgen (itempidx+gifile_right_offset), 0, 0, 1, gSname[itempidx], 0, 0, 2
+    endif
+    itempidx += 1
+    if (itempidx < 100) igoto loop
+
+; init global audio
+gaout1l init 0
+gaout2l init 0
+gaout3l init 0
+gaout4l init 0
+gaout1r init 0
+gaout2r init 0
+gaout3r init 0
+gaout4r init 0
+
+
+instr 1
+
+; Get Triggers
+kignore_next_kill init 0
+kticks_since_secondary init 0
+
+ktrig1 trigger gkrecord , 0.5,0
+ktrig2 trigger gkfilesel , 0.5,0
+ktrig3 trigger gkreset , 0.5,0
+ktrig4 trigger gkfreeze , 0.5,0
+
+kkill1 trigger gkrecord_alt, 0.5, 0
+kkill2 trigger gkfile_alt, 0.5, 0
+kkill3 trigger gkreset_alt, 0.5, 0
+kkill4 trigger gkfreeze_alt, 0.5, 0
+
+ktrigkill trigger gksource, 0.5, 0
+
+;if gksourcebuttonstate == 1 then
+;	ktrigkill = 0
+;endif
+
+kfile_offset = round(gkblend * ginumfiles) - 5 
+if kfile_offset < 0 then
+    kfile_offset = 0
+endif
+
+if ktrig1 == 1 then
+    kfilesel = 0 + kfile_offset
+    ktablenumber = (gifilesel_offset + kfilesel) + 1
+    kplaybacktime = gilen[kfilesel] * gkloopstart_alt
+    turnoff2 2, 0, 1
+    event "i", 2, 0, kplaybacktime, ktablenumber 
+endif
+
+if ktrig2 == 1 then
+    kfilesel = 1 + kfile_offset
+    ktablenumber = (gifilesel_offset + kfilesel) + 1
+    kplaybacktime = gilen[kfilesel] * gkdensity_alt
+    turnoff2 3, 0, 1
+    event "i", 3, 0, kplaybacktime, ktablenumber
+endif
+
+if ktrig3 == 1 then
+    kfilesel = 2 + kfile_offset
+    ktablenumber = (gifilesel_offset + kfilesel) + 1
+    kplaybacktime = gilen[kfilesel] * gkloopsize_alt
+    turnoff2 4, 0, 1
+    event "i", 4, 0, kplaybacktime, ktablenumber
+endif
+
+if ktrig4 == 1 then
+    kfilesel = 3 + kfile_offset
+    ktablenumber = (gifilesel_offset + kfilesel) + 1
+    kplaybacktime = gilen[kfilesel] * gkoverlap_alt
+    turnoff2 5, 0, 1
+    event "i", 5, 0, kplaybacktime, ktablenumber
+endif
+
+if kkill1 == 1 then
+    turnoff2 2, 0, 1
+endif
+if kkill2 == 1 then
+    turnoff2 3, 0, 1
+endif
+if kkill3 == 1 then
+    turnoff2 4, 0, 1
+endif
+if kkill4 == 1 then
+    turnoff2 5, 0, 1
+endif
+
+if ktrigkill == 1 then
+    turnoff2 2, 0, 1
+    turnoff2 3, 0, 1
+    turnoff2 4, 0, 1
+    turnoff2 5, 0, 1
+endif
+
+; Handle the Audio
+amixl = gaout1l + gaout2l + gaout3l + gaout4l
+amixr = gaout1r + gaout2r + gaout3r + gaout4r
+
+; global downsamp
+kwindowscalar = 1.0 - ((1.0 - gkwindow_alt) * (1.0 - gkwindow_alt))
+kdownsamprate = (22050 - (kwindowscalar * 21500))
+awindowtick poscil 0.5, kdownsamprate, giSquare
+if gkwindow_alt > 0.01 then 
+    aoutl samphold amixl * 0.25, awindowtick
+    aoutr samphold amixr * 0.25, awindowtick 
+else
+    aoutl = amixl * 0.25
+    aoutr = amixr * 0.25
+endif
+
+outs aoutl, aoutr
+clear gaout1l, gaout2l, gaout3l, gaout4l, gaout1r, gaout2r, gaout3r, gaout4r
+
+endin
+
+instr 2
+ifilesel = p4 
+itableidx = p4 - gifilesel_offset - 1
+idur = p3
+ilogmax = log(32.00) ; 2 ^ n octaves
+ilogmin = log(1.0)
+kindividualpitch = (gkloopstart * 1.2)- 0.6
+kpitchscalar = gkpitch + kindividualpitch
+kfactor = exp(kpitchscalar * (ilogmax - ilogmin) + ilogmin)
+kpitch = 0.125 * kfactor
+if kpitch < 0.0 then
+    kpitch = 0.0
+endif
+aphase lphasor kpitch;, 0, idur
+if gichn[itableidx] > 1 then
+    asigl tablei aphase, ifilesel;
+    asigr tablei aphase, itableidx + gifile_right_offset
+    gaout1l = asigl
+    gaout1r = asigr
+else
+    asig tablei aphase, ifilesel;
+    gaout1l = asig
+    gaout1r = asig
+endif
+if k(aphase) > idur * gisr[itableidx] then
+    turnoff 
+endif
+endin
+
+instr 3
+ifilesel = p4 
+itableidx = p4 - gifilesel_offset - 1
+idur = p3
+ilogmax = log(32.00) ; 2 ^ n octaves
+ilogmin = log(1.0)
+kindividualpitch = (gkdensity * 1.2)- 0.6
+kpitchscalar = gkpitch + kindividualpitch
+kfactor = exp(kpitchscalar * (ilogmax - ilogmin) + ilogmin)
+kpitch = 0.125 * kfactor
+if kpitch < 0.0 then
+    kpitch = 0.0
+endif
+aphase lphasor kpitch;, 0, idur
+if gichn[itableidx] > 1 then
+    asigl tablei aphase, ifilesel;
+    asigr tablei aphase, itableidx + gifile_right_offset
+    gaout2l = asigl
+    gaout2r = asigr
+else
+    asig tablei aphase, ifilesel;
+    gaout2l = asig
+    gaout2r = asig
+endif
+if k(aphase) > idur * gisr[itableidx] then
+    turnoff 
+endif
+endin
+
+instr 4
+ifilesel = p4 
+itableidx = p4 - gifilesel_offset - 1
+idur = p3
+ilogmax = log(32.00) ; 2 ^ n octaves
+ilogmin = log(1.0)
+kindividualpitch = (gkloopsize * 1.2)- 0.6
+kpitchscalar = gkpitch + kindividualpitch
+kfactor = exp(kpitchscalar * (ilogmax - ilogmin) + ilogmin)
+kpitch = 0.125 * kfactor
+if kpitch < 0.0 then
+    kpitch = 0.0
+endif
+aphase lphasor kpitch;, 0, idur
+if gichn[itableidx] > 1 then
+    asigl tablei aphase, ifilesel;
+    asigr tablei aphase, itableidx + gifile_right_offset
+    gaout3l = asigl
+    gaout3r = asigr
+else
+    asig tablei aphase, ifilesel;
+    gaout3l = asig
+    gaout3r = asig
+endif
+if k(aphase) > idur * gisr[itableidx] then
+    turnoff 
+endif
+endin
+
+instr 5
+ifilesel = p4 
+itableidx = p4 - gifilesel_offset - 1
+idur = p3
+ilogmax = log(32.00) ; 2 ^ n octaves
+ilogmin = log(1.0)
+kindividualpitch = (gkoverlap * 1.2) - 0.6
+kpitchscalar = gkpitch + kindividualpitch
+kfactor = exp(kpitchscalar * (ilogmax - ilogmin) + ilogmin)
+kpitch = 0.125 * kfactor
+if kpitch < 0.0 then
+    kpitch = 0.0
+endif
+aphase lphasor kpitch;, 0, idur
+if gichn[itableidx] > 1 then
+    asigl tablei aphase, ifilesel;
+    asigr tablei aphase, itableidx + gifile_right_offset
+    gaout4l = asigl
+    gaout4r = asigr
+else
+    asig tablei aphase, ifilesel;
+    gaout4l = asig
+    gaout4r = asig
+endif
+if k(aphase) > idur * gisr[itableidx] then
+    turnoff 
+endif
+endin

@@ -1,0 +1,73 @@
+; Nebulae_Marimba_V1.1.csd
+; for the Qu-Bit Electronix Nebulae Eurorack module
+; www.qubitelectronix.com
+;
+; Marimba is a marimba physical model oscillator
+;
+; May 7, 2015
+;
+; Collin Russell
+; collinrussellmusic.com
+; collinrussell0912@gmail.com
+;
+; Andrew Ikenberry
+; andrewikenberry.com
+; andrewikenberry@gmail.com
+;
+; Ported from Nebulae_V1 by:
+; Chris Erin
+; github.com/chriserin
+; chris.erin@gmail.com
+
+prealloc 2, 12
+
+gkinstances = 0
+
+gimarimba ftgen 0, 0, 2048, 1, "./audio/marmstk1.wav", 0, 0, 0
+gisinewave ftgen 0, 0, 1024, 10, 1
+
+instr 1
+
+  krecall init 0
+
+  ; recall
+  if (gkrecord == 1 && krecall == 0) then ; turn recall on
+    krecall = 1
+  elseif (gkrecord == 0) then ; turn recall off
+    krecall = 0
+  endif
+
+  kactive active 2
+
+  if (kactive >= 10) then
+    turnoff2 2, 1, 0.1
+  endif
+
+  ktrig trigger krecall, 0, 0.5
+
+  if (krecall == 1) then
+    schedkwhen ktrig, 0.005, 10, 2, 0, 12
+    krecall = 0
+    ktrig = 0
+  endif
+endin
+
+instr 2
+
+  kpitch scale gkpitch, 6, 11    ; Pitch
+  kpitch pow  2, kpitch          ; Make pitch 1V/Octave
+  kvibf  scale gkloopsize, 0, 11 ; Vibrato Rate (Grain Rate)
+  kvamp  scale gkloopstart, 0, 1 ; Vibrato Amount (Grain Size)
+
+  adel linseg 0, 2, 0.02, 2, 0
+  asig marimba, 0.5, kpitch, 0.1, 0.561, gimarimba, kvibf, kvamp, gisinewave, 0.6, 0.1, 0.1
+
+  gkinstances  active 2
+
+  if (gkinstances == 1) then
+    out asig
+  else
+    out asig * 0.7
+  endif
+
+endin

@@ -1,0 +1,25 @@
+; Wave Trauma
+;
+; Ported from Nebulae_V1 by:
+; Chris Erin
+; github.com/chriserin
+; chris.erin@gmail.com
+
+instr 1
+  ifn   = 401        ; table number
+  ilen  = nsamp(ifn) ; return actual number of samples in table
+  itrns = 1          ; no transposition
+  ilps  = 0          ; loop starts at index 0
+  ilpe  = ilen       ; ends at value returned by nsamp above
+  imode = 3          ; loop forwards & backwards
+  istrt = 10000      ; commence playback at index 10000 samples
+
+  ; lphasor provides index into f1
+  alphs lphasor   itrns, ilps, ilpe, imode, istrt
+  atab  tablei    alphs, ifn
+
+  ; amplify signal
+  atab = atab * 10000
+
+  out atab
+endin
