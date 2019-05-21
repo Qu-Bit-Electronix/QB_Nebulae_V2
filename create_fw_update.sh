@@ -18,6 +18,28 @@ cd temp/
 # Copy Code/ contents to new directory structure
 mkdir -p QB_Nebulae_V2/
 cp -R ../Code/ QB_Nebulae_V2/
+# Go through, and strip any unwanted line endings.
+SEARCHDIR=./QB_Nebulae_V2/Code
+for f in $SEARCHDIR/* $SEARCHDIR/**/*
+do
+    if [ -d "$f" ]
+    then
+        for ff in $f/*
+        do
+            if [ -f "$f" ] 
+            then 
+                echo "Stripping File of carriage returns: $f"
+                dos2unix $f
+            fi
+        done
+    else
+        if [ -f "$f" ] 
+        then 
+            echo "Stripping File of carriage returns: $f"
+            dos2unix $f
+        fi
+    fi
+done
 # Create Update File
 tar -czf neb_update.zip QB_Nebulae_V2
 # Copy Update File to user directory
