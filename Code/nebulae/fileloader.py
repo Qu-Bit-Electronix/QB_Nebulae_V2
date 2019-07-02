@@ -16,15 +16,15 @@ class FileLoader(object):
         self.instrtypes = [".instr"]
         self.pdtypes = [".pd"]
         self.csdtypes = [".csd"]
-        self.scdtypes = [".scd"]
+        self.scdtypes = [".scsyndef"]
         self.othertypes = [".c", ".sh", ".cpp", ".cc"]
-        self.dirs = [ "audio", "instr", "pd", "supercollider", "csound", "other"]
+        self.dirs = [ "audio", "instr", "pd", "scsyndef", "csound", "other"]
         self.dirtypes = {}
         self.dirtypes["audio"] = self.audiotypes
         self.dirtypes["instr"] = self.instrtypes
         self.dirtypes["pd"] = self.pdtypes
         self.dirtypes["csd"] = self.csdtypes
-        self.dirtypes["scd"] = self.scdtypes
+        self.dirtypes["scsyndef"] = self.scdtypes
         self.dirtypes["other"] = self.othertypes
         self.usb_mounted = self.isUSBMounted()
         self.led_process = None
@@ -45,6 +45,7 @@ class FileLoader(object):
             self.copyType("audio")
             self.copyType("instr")
             self.copyType("pd")
+            self.copyType("scsyndef")
             self.umount()
         else:
             self.launch_bootled(0)
