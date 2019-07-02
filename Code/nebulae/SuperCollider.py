@@ -26,12 +26,10 @@ class SuperCollider():
                 print "something went wrong with " + i
 
     def boot(self):
-        sc.start(self.exedir, 57110, 2, 2, 96000, 1, 1, 1)
+        sc.start(self.exedir, 57110, 2, 2, 48000, 1, 1, 1)
         self.s = sc.sc.server 
         sc.sc.synthdefpath = self.path + "scsyndef"
         sc.sc.sndpat = self.path + "audio"
-        cmd = "sudo sh /home/alarm/QB_Nebulae_V2/Code/scripts/jack_connect.sh"
-        os.system(cmd)
         self.started = True #it's alive!
         self.loadBuffers()
         print "server has started"
