@@ -12,6 +12,7 @@ import time
 import threading
 import wavewriter
 import numpy as np
+from SuperCollider import SuperCollider
 
 
 # Defines for Button/Gate Types
@@ -35,6 +36,7 @@ class ControlHandler(object):
         GPIO.setmode(GPIO.BCM) # init GPIO
         GPIO.setwarnings(False) # silence GPIO warnings (this is probably not the best.)
         self.eol_pin = 16
+        self.sc = SuperCollider() #added supercollider
         self.eol_state = False
         GPIO.setup(self.eol_pin, GPIO.OUT)
         self.shiftReg = libSR.ShiftRegister()
@@ -218,6 +220,18 @@ class ControlHandler(object):
     def mode(self):
         return self.control_mode
     
+    def enterSuperColliderMode(self): ##added supercollider mode, very similar to the PD mode
+        self.prev_control_mode = self.control_mode
+        self.control_mode = "supercollider"
+        for chn in self.channels: #mutes csound
+            chn.muteCSound(True)
+        if self.control_mode == "secondary controls":
+            self.resistSecondarySettings()
+        self.altchanneldict["source_alt"].setValue(0)
+        if self.pdSock.is_connected(): #kills pure data
+            self.pdSock.close()
+        self.sc.boot()
+    
     def enterNormalMode(self):
         print "entering normal"
         for chn in self.channels:
@@ -233,6 +247,7 @@ class ControlHandler(object):
         self.control_mode = "normal"
         if self.pdSock.is_connected():
             self.pdSock.close()
+        self.sc.exit()
 
     def enterPureDataMode(self):
         self.prev_control_mode = self.control_mode
@@ -245,15 +260,16 @@ class ControlHandler(object):
         if not self.pdSock.is_connected():
             print "Connecting to PD Socket"
             self.pdSock.connect()
+        self.sc.exit()
         self.control_mode = "puredata"
     
     def enterSecondaryMode(self):
         #self.modeChangeControl = "pitch"
         #self.altchanneldict[self.modeChangeControl + "_alt"].setIgnoreNextButton()
-        if self.control_mode == "normal" or self.control_mode == "puredata":
+        if self.control_mode == "normal" or self.control_mode == "puredata" or self.control_mode == "supercollider":
             print "entering secondary"
             self.resistNormalSettings() 
-            if not self.pdSock.is_connected() and self.control_mode == "puredata":
+            if not self.pdSock.is_connected() and self.control_mode == "puredata" or self.control_mode == "supercollider":
                 print "Connecting to PD Socket"
                 self.pdSock.connect()
             self.prev_control_mode = self.control_mode
@@ -266,7 +282,7 @@ class ControlHandler(object):
     def enterInstrSelMode(self):
         #self.modeChangeControl = "speed"
         #self.instrchanneldict[self.modeChangeControl + "_instr"].setIgnoreNextButton()
-        if self.control_mode == "normal" or self.control_mode == "puredata":
+        if self.control_mode == "normal" or self.control_mode == "puredata" or self.control_mode == "supercollider":
             print "entering instr selector"
             self.control_mode = "instr selector"
         self.settings.update(self.now)
@@ -301,7 +317,7 @@ class ControlHandler(object):
             self.defaultConfig["sourcegate"] = ["triggered", "rising"]
             self.defaultConfig["ksmps"] = ["128"]
             self.defaultConfig["sr"] = ["44100"]
-        elif self.control_mode == "puredata":
+        elif self.control_mode == "puredata" or self.control_mode == "supercollider":
             self.defaultConfig["reset"] = ["triggered", "rising"]
             self.defaultConfig["freeze"] = ["latching", "rising"]
             self.defaultConfig["source"] = ["latching", "falling"]
@@ -403,6 +419,8 @@ class ControlHandler(object):
                 if self.control_mode == "secondary controls":
                     if self.prev_control_mode == "puredata":
                         self.enterPureDataMode()
+                    elif self.prev_control_mode == "supercollider": 
+                        self.enterSuperColliderMode() ##added
                     else:
                         self.enterNormalMode()
         if self.prep_mode_change == True and self.now - self.prep_mode_change_time > 175:# and numChanged > 0:
@@ -434,6 +452,10 @@ class ControlHandler(object):
                         print 'Could not send messages to PD. Connected, but error?'
                     else:
                         print 'Could not send messgaes to PD. No connection?'
+            elif self.prev_control_mode =="supercollider": #if we are in sc mode
+                for chn in self.channels: #for each of the adc channels
+                    self.sc.setSynth(chn.name, chn.getValue()) ##for each channel I send a OSC message
+                    chn.update() #update all control values
             else:
                 for chn in self.channels:
                     chn.update()
@@ -477,6 +499,12 @@ class ControlHandler(object):
                     print 'Could not send messages to PD. Connected, but error?'
                 else:
                     print 'Could not send messgaes to PD. No connection?'
+        elif self.control_mode =="supercollider": #if we are in sc mode 
+            for chn in self.channels: #for each of the adc channels
+                if chn.name != "sourcegate":
+                    chn.setIgnoreHID(False)
+                self.sc.setSynth(chn.name, chn.getValue()) ##for each channel I send a OSC message
+                chn.update() #update all control values
         else: #includes "normal":4
             filestate = self.channeldict["filestate"].getValue()
             source_state = self.getValue("source")
