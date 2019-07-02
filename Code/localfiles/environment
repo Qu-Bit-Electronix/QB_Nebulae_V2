@@ -1,0 +1,9 @@
+#
+# This file is parsed by pam_env module
+#
+# Syntax: simple "KEY=VAL" pairs on separate lines
+#
+#
+LD_LIBRARY_PATH=/usr/local/lib
+SC_JACK_DEFAULT_INPUTS=system
+SC_JACK_DEFAULT_OUTPUTS=system
