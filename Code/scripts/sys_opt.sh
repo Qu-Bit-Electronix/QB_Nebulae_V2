@@ -2,6 +2,9 @@
 
 # Exporting LIB path for nebulae
 echo export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+sudo echo export SC_JACK_DEFAULT_INPUTS=system #these are here for safety, but perhaps are not needed
+sudo echo export SC_JACK_DEFAULT_OUTPUTS=system
+sudo echo export SC_PLUGIN_PATH=/usr/share/SuperCollider/Extensions/SC3plugins:/usr/share/local/SuperCollider/Extensions/SC3plugins
 # Probing i2c dev to enable i2c
 sudo modprobe i2c-dev
 # Stop the ntp service
