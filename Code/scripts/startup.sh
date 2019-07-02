@@ -28,6 +28,9 @@ fi
 # Configure Audio Codec
 sh /home/alarm/QB_Nebulae_V2/Code/scripts/enable_inputs.sh
 
+sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh rw
+sudo bash -c "cat /home/alarm/QB_Nebulae_V2/Code/localfiles/environment > /etc/environment"
+sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh ro
 
 sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh rw
 sudo python2 /home/alarm/QB_Nebulae_V2/Code/nebulae/check_calibration.py
