@@ -10,6 +10,7 @@ import fileloader
 import time
 import logger
 import neb_globals
+from SuperCollider import SuperCollider 
 
 cfg_path = "/home/alarm/QB_Nebulae_V2/Code/config/"
 
@@ -29,6 +30,7 @@ class Nebulae(object):
         #self.currentInstr = "a_granularlooper"
         self.c = None
         self.pt = None 
+        self.sc = SuperCollider()
         self.ui = None
         self.c_handle = None
         self.led_process = None
@@ -52,12 +54,15 @@ class Nebulae(object):
         factory_path = "/home/alarm/QB_Nebulae_V2/Code/instr/"
         user_path = "/home/alarm/instr/"
         pd_path = "/home/alarm/pd/"
+        sc_path = "/home/alarm/scsyndef/"
         if self.new_bank == 'factory': 
             path = factory_path + self.new_instr + '.instr'
         elif self.new_bank == 'user':
             path = user_path + self.new_instr + '.instr'
         elif self.new_bank == 'puredata':
             path = pd_path + self.new_instr + '.pd'
+        elif self.new_bank == 'supercollider':
+            path = sc_path + self.new_instr + '.scsyndef'
         else:
             print "bank not recocgnized."
             print self.new_bank
@@ -144,6 +149,9 @@ class Nebulae(object):
             if self.new_bank == "puredata":
                 self.start_puredata(self.new_instr)
                 self.run_puredata()
+            elif self.new_bank == "supercollider":
+                self.start_supercollider(self.new_instr)
+                self.run_supercollider()
             else:
                 self.c.reset()
                 self.start(self.new_instr, self.new_bank)
@@ -178,6 +186,26 @@ class Nebulae(object):
                 os.system("sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh ro")
         except:
             "Could not write config file."
+            
+            
+    def start_supercollider(self, synth): #start sc with the selected synth
+        #self.cleanup_puredata() ##kills pure data
+        #self.cleanup()
+        if self.c is not None: ##if csound is still alive
+            self.c.cleanup() ##kill it
+            self.c = None ##set its life to None
+        self.c_handle = None
+        self.currentIntr = synth
+        self.newInstr = synth
+        floader = fileloader.FileLoader() 
+        floader.reload() #reloads all the files to be sure
+        self.orc_handle.refreshFileHandler() #also the audio files
+        self.c_handle = ch.ControlHandler(None, self.orc_handle.numFiles(), None, self.new_instr, bank="supercollider") #supercollider controlhandler
+        self.c_handle.setCsoundPerformanceThread(None)
+        self.c_handle.enterSuperColliderMode() ##enters supercollider mode and boots scsynth
+        self.loadUI()
+        self.sc.instantiate_synth(synth) #instantiate the selected synth on the server
+        
 
     def start_puredata(self, patch):
         self.log.spill_basic_info()
@@ -229,6 +257,9 @@ class Nebulae(object):
             if self.new_bank == "puredata":
                 self.start_puredata(self.new_instr)
                 self.run_puredata()
+            elif self.new_bank == "supercollider":
+                self.start_supercollider(self.new_instr)
+                self.run_supercollider()
             else:
                 self.start(self.new_instr, self.new_bank)
                 self.run()
@@ -238,6 +269,52 @@ class Nebulae(object):
             print "Goodbye!"
             sys.exit()
             
+            
+    def run_supercollider(self): ##supercollider
+        if self.c is not None:
+		    self.c.cleanup()
+		    self.c = None
+        request = False
+        while(request != True):  ##while I have no requests from UI
+            self.c_handle.updateAll() ## keep on updating the control values (and sending them to scsynth)
+            self.ui.update() #update the UI
+            request = self.ui.getReloadRequest() ##check whether I got a UI request to change patch
+        if request == True:
+            self.first_run = False
+            print "Received Reload Request from UI"
+            print "index of new instr is: " + str(self.c_handle.instr_sel_idx)
+            self.new_instr = self.ui.getNewInstr()
+            print "new instr: " + self.new_instr
+            self.new_bank = self.c_handle.getInstrSelBank()
+            print "new bank: " + self.new_bank
+            self.ui.reload_flag = False # Clear Reload Flag
+            print "Reloading " + self.new_instr + " from " + self.new_bank
+            # Store bank/instr to config
+            self.writeBootInstr()
+            # Get bank/instr from factory
+            if self.new_bank == "puredata":
+                self.cleanup_sc()
+                self.start_puredata(self.new_instr)
+                self.run_puredata()
+            elif self.new_bank == "supercollider": #added
+                self.cleanup_sc()
+                self.start_supercollider(self.new_instr)
+                self.run_supercollider()
+            else:
+                time.sleep(0.5)
+                self.cleanup_sc()
+                self.start(self.new_instr, self.new_bank)
+                self.run()
+        else:
+            print "Run Loop Ending."
+            self.cleanup_sc()
+            print "Goodbye!"
+            sys.exit()     
+            
+    def cleanup_sc(self):
+        self.sc.free_synth()
+        self.sc.exit()
+       
     def cleanup_puredata(self): 
         self.pt.terminate()
         self.pt.kill()
@@ -269,6 +346,9 @@ app = Nebulae()
 if app.new_bank == "puredata":
     app.start_puredata(app.new_instr)
     app.run_puredata()
+elif app.new_bank == "supercollider":
+    app.start_supercollider(app.new_instr)
+    app.run_supercollider()
 else:
     app.start(app.new_instr, app.new_bank)
     app.run()
