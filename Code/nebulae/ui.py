@@ -52,9 +52,11 @@ class UserInterface(object):
         user_dir = "/home/alarm/instr/"
         factory_dir = "/home/alarm/QB_Nebulae_V2/Code/instr/"
         pd_dir = "/home/alarm/pd/"
+        sc_dir = "/home/alarm/scsyndef/"
         self.factoryinstr_fhandle = filehandler.FileHandler(factory_dir, ".instr")
         self.userinstr_fhandle = filehandler.FileHandler(user_dir, ".instr")
         self.puredata_fhandle = filehandler.FileHandler(pd_dir, ".pd")
+        self.sc_fhandle = filehandler.FileHandler(sc_dir, ".scsyndef")
         cur_bank = self.controlhandler.getInstrSelBank()
         self.bank_shift_counter = 0
         if cur_bank == "factory":
@@ -63,6 +65,9 @@ class UserInterface(object):
             cnt = self.userinstr_fhandle.numFiles()
         elif cur_bank == "puredata":
             cnt = self.puredata_fhandle.numFiles()
+        elif cur_bank == "supercollider":
+            cnt = self.sc_fhandle.numFiles()
+        self.bank_counter = 0
         self.controlhandler.setInstrSelNumFiles(cnt)
         self.reload_flag = False # Flag to reload the whole program. 
         self.alt_file_bright = 0.0
@@ -133,6 +138,8 @@ class UserInterface(object):
                     tempidx = self.userinstr_fhandle.getIndex(self.controlhandler.currentInstr) 
                 elif self.controlhandler.currentBank == 'puredata':
                     tempidx = self.puredatainstr_fhandle.getIndex(self.controlhandler.currentInstr) 
+                elif self.controlhandler.currentBank == 'supercollider':
+                    tempidx = self.sc_fhandle.getIndex(self.controlhandler.currentInstr)
                 self.controlhandler.setInstrSelIdx(tempidx)
                 self.controlhandler.setInstrSelBank(self.controlhandler.currentBank)
                 self.reload_flag = True
@@ -182,6 +189,8 @@ class UserInterface(object):
             f_handle = self.userinstr_fhandle
         elif self.controlhandler.getInstrSelBank() == "puredata":
             f_handle = self.puredata_fhandle
+        elif self.controlhandler.getInstrSelBank() == "supercollider":
+            f_handle = self.sc_fhandle
         idx = self.controlhandler.getInstrSelIdx()
         offset = self.controlhandler.getInstrSelOffset()
         for i in range(0, 5):
@@ -397,7 +406,7 @@ class UserInterface(object):
     
     # Returns duple of neg_brightness, pos_brightness
     def set_speed_leds(self, mode):
-        if mode == "normal" or mode == "puredata":
+        if mode == "normal" or mode == "puredata" or mode == "supercollider":
             pink = libDriver.Color(3037, 200, 3825)
             white = libDriver.Color(4095,4095,4095)
             red = libDriver.Color(4095, 0, 0) #octave 0 / record
@@ -502,11 +511,14 @@ class UserInterface(object):
             elif self.controlhandler.getInstrSelBank() == "puredata":
                 self.set_rgb("speed_neg", tempc.red(), tempc.green(), tempc.blue(), 0.0)
                 self.set_rgb("speed_pos", tempc.red(), tempc.green(), tempc.blue(), 1.0)
+            elif self.controlhandler.getInstrSelBank() == "supercollider":
+                self.set_rgb("speed_neg", tempc.red(), tempc.green(), tempc.blue(), 0.0)
+                self.set_rgb("speed_pos", tempc.red(), tempc.green(), tempc.blue(), 0.0)
         else:
             pass
     
     def update_speed(self, mode):
-        if mode == "normal" or mode == "puredata":
+        if mode == "normal" or mode == "puredata" or mode == "supercollider":
             if self.speed_click.risingEdge() == True:
                 self.time_pressed_speed = self.now
             if self.speed_click.state() == True and self.now - self.time_pressed_speed > 1500:
@@ -534,25 +546,22 @@ class UserInterface(object):
                 self.bank_shift_counter = -1 * thresh
 
             #print "bank shift counter: " + str(self.bank_shift_counter)
-                
 
-            if cur_bank == "user" and self.bank_shift_counter >= thresh:
+            if self.bank_shift_counter >= thresh or self.bank_shift_counter <= -1 * thresh:
                 self.bank_shift_counter = 0
-                self.controlhandler.setInstrSelBank("factory")
-                self.controlhandler.setInstrSelNumFiles(self.factoryinstr_fhandle.numFiles())
-            elif cur_bank == "puredata" and self.bank_shift_counter <= -1 * thresh:
-                self.bank_shift_counter = 0
-                self.controlhandler.setInstrSelBank("factory")
-                self.controlhandler.setInstrSelNumFiles(self.factoryinstr_fhandle.numFiles())
-            elif cur_bank == "factory":
-                if self.bank_shift_counter >= thresh:
-                    self.bank_shift_counter = 0
-                    self.controlhandler.setInstrSelBank("puredata")
-                    self.controlhandler.setInstrSelNumFiles(self.puredata_fhandle.numFiles())
-                elif self.bank_shift_counter <=  -1 * thresh:
-                    self.bank_shift_counter = 0
+                self.bank_counter = self.bank_counter+1
+                if self.bank_counter%4 == 0:
+                    self.controlhandler.setInstrSelBank("factory")
+                    self.controlhandler.setInstrSelNumFiles(self.factoryinstr_fhandle.numFiles())
+                if self.bank_counter%4 == 1:
                     self.controlhandler.setInstrSelBank("user")
                     self.controlhandler.setInstrSelNumFiles(self.userinstr_fhandle.numFiles())
+                if self.bank_counter%4 == 2:
+                    self.controlhandler.setInstrSelBank("puredata")
+                    self.controlhandler.setInstrSelNumFiles(self.puredata_fhandle.numFiles())
+                if self.bank_counter%4 == 3: 
+                    self.controlhandler.setInstrSelBank("supercollider")
+                    self.controlhandler.setInstrSelNumFiles(self.sc_fhandle.numFiles())
 
             if self.clicked_speed() == 1:
                 print "Clicked Speed from Instr Sel"
@@ -646,7 +655,7 @@ class UserInterface(object):
         purple = libDriver.Color(511, 0, 4095) # octave 5 (5V)
         colororder = [ white, orange, yellow, blue, green, purple]
         octaves = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
-        if mode == "normal" or mode == "puredata":
+        if mode == "normal" or mode == "puredata" or mode == "supercollider":
             original_pitch = 0.6
             tolerance = 0.001
             pitch_amt = round(self.controlhandler.getValue("pitch"), 4) # I don't like that I have to do this
@@ -738,7 +747,7 @@ class UserInterface(object):
             
 
     def update_pitch(self, mode):
-        if mode == "normal" or mode == "puredata":
+        if mode == "normal" or mode == "puredata" or mode == "supercollider":
             if self.pitch_click.risingEdge() == True:
                 self.time_pressed_pitch = self.now
             self.set_pitch_amount()
@@ -754,6 +763,8 @@ class UserInterface(object):
                 f_handle = self.userinstr_fhandle
             elif self.controlhandler.getInstrSelBank() == "puredata":
                 f_handle = self.puredata_fhandle
+            elif self.controlhandler.getInstrSelBank() == "supercollider":
+                f_handle = self.sc_fhandle
             if f_handle.numFiles() <= 5:
                 offset = 0
             else:
@@ -824,6 +835,9 @@ class UserInterface(object):
         elif self.controlhandler.getInstrSelBank() == "puredata":
             if idx < self.puredata_fhandle.numFiles():
                 instr = self.puredata_fhandle.getFilename(idx)
+        elif self.controlhandler.getInstrSelBank() == "supercollider":
+            if idx < self.sc_fhandle.numFiles():
+                instr = self.sc_fhandle.getFilename(idx)
         return instr
 
     def setCurrentInstr(self, instr):
@@ -841,6 +855,8 @@ class UserInterface(object):
                     tempbankname = "user"
                 elif tempbank == self.puredata_fhandle:
                     tempbankname = "puredata"
+                elif tempbank == self.sc_fhandle:
+                    tempbankname = "supercollider"
                 break
         # Only udpate if the instr is found
         if tempidx is not None and tempbank is not None:
