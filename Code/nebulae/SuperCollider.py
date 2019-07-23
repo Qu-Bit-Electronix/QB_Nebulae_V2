@@ -26,7 +26,7 @@ class SuperCollider():
                 print "something went wrong with " + i
 
     def boot(self):
-        sc.start(self.exedir, 57110, 2, 2, 48000, 1, 1, 1)
+        sc.start(self.exedir, 57110, 2, 2, 48000, 0, 0, 1) #remove verbosity and spew of scsynth
         self.s = sc.sc.server 
         sc.sc.synthdefpath = self.path + "scsyndef"
         sc.sc.sndpat = self.path + "audio"
