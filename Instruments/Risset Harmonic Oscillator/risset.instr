@@ -1,0 +1,118 @@
+;
+; Risset Harmonic Oscillator
+; An instrument for the Qu-Bit Nebulae v2
+; Dave Seidel, June 2020
+;
+
+gitabsz	init 2^17
+
+gilforabsz init 2^13
+; giLfoSin ftgen 1, 0, gilforabsz, 10, 1
+giLfoTri ftgen 0, 0, gilforabsz, 7, 0, gilforabsz/4, 1, gilforabsz/2, -1, gilforabsz/4, 0
+
+
+; triangle wave (odd harmonics at a strength of 1/harmonic
+; number with inverted phase for every other harmonic):
+giTri   ftgen 0,	0, gitabsz,	9,	1,1,0,  3,0.333,180,  5,0.2,0,  7,0.143,180, 9,0.111,0, 11,0.091,180, 13,0.077,0, 15,0.067,180, 17,0.059,0, 19,0.053,180, 21,0.048,0, 23,0.043,180, 25,0.04,0, 27,0.037,180, 29,0.034,0, 31,0.032,180
+
+; sawtooth
+giSaw    ftgen 0, 0, gitabsz, 7, 0, gitabsz/2, 1, 0, -1, gitabsz/2, 0
+
+; square
+giSquare ftgen 0, 0, gitabsz, 7, 1, gitabsz/2, 1, 0, -1, gitabsz/2, -1
+
+; David First's asymptotic sawtooth wave
+giAsymp ftgen	0,	0, gitabsz, 9,  1,1,0,  1.732050807568877,0.5773502691896259,0,   2.449489742783178,0.408248290463863,0,   3.162277660168379,0.3162277660168379,0,   3.872983346207417,0.2581988897471611,0,   4.58257569495584,0.2182178902359924,0,   5.291502622129182,0.1889822365046136,0, 6,0.1666666666666667,0,   6.70820393249937,0.1490711984999859,0,   7.416198487095663,0.1348399724926484,0,   8.124038404635961,0.1230914909793327,0,   9.539392014169456,0.1048284836721918,0,  10.2469507659596,0.0975900072948533,0,  10.95445115010332,0.0912870929175277,0,   11.6619037896906,0.0857492925712544,0
+
+; Prime wave (prime-number harmonics)
+giPrime ftgen	0,	0, gitabsz, 9,  1,1,0,  2,0.5,0,  3,0.3333,0,  5,0.2,0,   7,0.143,0,  11,0.0909,0,  13,0.077,0,   17,0.0588,0,  19,0.0526,0, 23,0.0435,0, 27,0.037,0, 31,0.032,180
+
+; Fibonacci wave (harmonics in the Fibonnaci series)
+giFib   ftgen	0,	0, gitabsz, 9,  1,1,0,  2,0.5,0,  3,0.3333,0,  5,0.2,0,   8,0.125,0,  13,0.0769,0,  21,0.0476,0,  34,0.0294,0 ;,  55,0.0182,0,  89,0.0112,0, 144,0.0069,0
+
+
+giNumTables = 6
+
+; list of tables for ftmorf (including dummy extra entry, otherwise ftmorf crashes)
+giList ftgen 1000, 0, giNumTables+1, -2, giTri, giSaw, giSquare, giAsymp, giPrime, giFib, giFib
+
+; work table for ftmorf
+giMorf ftgen 1001, 0, gitabsz, 10, 1
+
+
+instr 1
+  ; make pitch 1v/octave
+  kfreq scale gkpitch, 11, 6
+  kfreq pow 2, kfreq
+
+  ; initialize Risset offsets
+  koff  init 0.001
+  koff1	init 0.001
+  koff2	init 2 * 0.001
+  koff3	init 3 * 0.001
+  koff4	init 4 * 0.001
+
+  ; compute offsets controlled by Size knob/inout
+  koff scale gkloopsize, 0.03, 0.001
+  koff1	= koff
+  koff2	= 2 * koff
+  koff3	= 3 * koff
+  koff4	= 4 * koff
+
+  ; morph through waveforms using Density knob/input
+  itbl = giMorf
+  kndx init 0
+
+  kndx scale gkdensity, giNumTables-1, 0
+  ftmorf kndx, giList, giMorf
+  
+  ; amplitude per oscillator
+  kamp init 0.8/9
+
+  ; overall amplitude, controlled by Start knob/input
+  kglobalamp = gkloopstart
+
+  ; generate primary tone
+  a1 poscil3 kamp, kfreq, itbl
+
+  ; generate Risset tones
+  a2 poscil3 kamp, kfreq+koff1, itbl		; eight oscillators with the same envelope
+  a3 poscil3 kamp, kfreq+koff2, itbl		; and waveform, but slightly different
+  a4 poscil3 kamp, kfreq+koff3, itbl		; frequencies, create harmonic arpeggio
+  a5 poscil3 kamp, kfreq+koff4, itbl
+  a6 poscil3 kamp, kfreq-koff1, itbl
+  a7 poscil3 kamp, kfreq-koff2, itbl
+  a8 poscil3 kamp, kfreq-koff3, itbl
+  a9 poscil3 kamp, kfreq-koff4, itbl
+
+  ; toggle between output modes using the Record button (in default latching mode: on/off)
+  if gkrecord == 0 then
+    ; stereo output: left is primary+evens, right is primary+odds
+    aoutL = kglobalamp * (a1+a2+a4+a6+a8)
+    aoutR = kglobalamp * (a1+a3+a5+a7+a9)
+  elseif gkrecord == 1 then
+    ; dual mono output: left is harmonic arpeggio, right is primary tone only
+    aoutL = kglobalamp * (a1+a2+a3+a4+a5+a6+a7+a8+a9)
+    aoutR = kglobalamp * (a1*4.5)
+  endif
+
+  ; - cross-panning "tremolo", speed controlled by Overlap knob input
+  ; - only available in stereo mode
+  ; - left/right channels each have their own panner driven by a dedicated LFO
+  ; - LFOs have different speeds: either slightly faster or slightly than the "kpan" setting
+  kpan scale gkoverlap, 5.0, 0.0
+  if kpan > 0.1 && gkrecord == 0 then
+    ; LFOs
+    klfoL oscili 0.49, kpan-0.1, giLfoTri, 90
+    klfoR oscili 0.49, kpan+0.1, giLfoTri, 270
+
+    ; panners
+    aoutL1, aoutR1 pan2 aoutL, klfoL+0.5
+    aoutL2, aoutR2 pan2 aoutR, klfoR+0.5
+
+    aoutL = aoutL1+aoutL2
+    aoutR = aoutR1+aoutR2
+  endif
+
+  outs aoutL, aoutR
+endin
