@@ -1,0 +1,171 @@
+nebconfigbegin
+ksmps,1
+-B,512
+-b,128
+sr,48000
+nebconfigend
+
+/****************
+ MARS AFFECTS v1, based on Original 'Effects' / 'World of Echo'
+
+ * Overview of controls *
+ * Pitch        - Reverb Chorus               [gkpitch]
+ * Pitch Alt    - Chorus Pitch                [gkpitch_alt]
+ * Speed        - Stereo Delay Skew           [gkspeed]
+ * Start        - Delay Time                  [gkloopstart]
+; * Start Alt    -                             [gkloopstart_alt]
+ * Size         - Feedback                    [gkloopsize]
+ * Size Alt     - Delay to Reverb (inv)       [gkloopsize_alt]
+ * Density      - Reverb Time                 [gkdensity]
+; * Density Alt  -                             [gkdensity_alt]
+ * Overlap      - Reverb Filter               [gkoverlap]
+ * Overlap Alt  - Dry to Reverb (inv)         [gkoverlap_alt]
+ * Blend        - Delay Amount                [gkblend]
+ * Blend Alt    - Left mix (inv)              [gkblend_alt]
+ * Window       - Reverb Amount               [gkwindow]
+ * Window Alt   - Right mix (inv)             [gkwindow_alt]
+ * Record       - Mute Incomming Signal       [gkrecord]
+ * File         - (none)                      [gkfilesel]
+ * Source       - 2x Mono in mode             [gksource]
+ * Reset        - (none)                      [gkreset]
+ * Freeze       - 100% Wet                    [gkfreeze]
+ ****************/
+
+instr 1
+
+ainl, ainr inch 1, 2
+
+
+; PARAMETERS
+; ----------
+
+; RECORD and SOURCE - Mute incoming signal and Stereo / 2x Mono mode
+
+if gkrecord == 0 then
+  ainl = ainl * (1 - gkblend_alt)
+  ainr = ainr * (1 - gkwindow_alt)
+  if gksource == 1 then
+    atot = (ainl + ainr) * 0.8
+    ainl = atot
+    ainr = atot
+  endif
+else
+  ainl = 0
+  ainr = 0
+endif
+
+; FREEZE - Mute Dry
+
+kmutedry = 1
+if gkfreeze == 1 then
+  kmutedry = 0
+endif
+
+
+; BLEND and WINDOW - Set Delay and Reverb amount
+
+kdelay_amount = gkblend
+kreverb_amount = gkwindow
+
+
+; SIZE_ALT and OVERLAP_ALT - Set Delay/Dry to Reverb amount
+
+kdelay_to_reverb_amount = (1 - gkloopsize_alt)
+koriginal_to_reverb = (1 - gkoverlap_alt)
+
+
+; PITCH and PITCH_ALT - Set Chorus-like amount
+
+kpitch = gkpitch
+kpitch_dif = (kpitch - 0.6001)
+
+; compensate for the fact that '0.6' is the middle.
+if kpitch_dif < 0 then
+  kpitch_dif = kpitch_dif * 0.6  ;  0.6 is close enough
+endif
+
+kpitch_dif = kpitch_dif * (3 + (5 * gkpitch_alt))  ;  gkpitch_alt makes it more extreme
+
+
+; SPEED - Delay skew in the stereo field. Pressing the speed knob will reset to '0.6250' which represents 'the middle'
+; Response to negative / positive is not linear (due to 0.6250 being the middle
+
+kspeed_dif = ((exp(gkspeed - 0.6250) - 1) / 1.718282 * 2.5) ^ 3
+
+
+; EFFECT FUNCTIONS
+; ----------------
+
+; DELAY
+
+ktimel = (gkloopstart * (1.99 + kspeed_dif)) + (0.01)
+ktimer = (gkloopstart * (1.99 - kspeed_dif)) + (0.01)
+
+kdelaytimel portk ktimel, 0.1
+kdelaytimer portk ktimer, 0.1
+
+kfeedback = gkloopsize
+
+; create a delay line
+abufoutl delayr 2.0
+atapl deltap3 kdelaytimel
+delayw ainl + (atapl * kfeedback)
+
+; second delay line
+abufoutr delayr 2.0
+atapr deltap3 kdelaytimer
+delayw ainr + (atapr * kfeedback)
+
+; attenuate delay line with BLEND, it does not contain the original signal
+adelayl = (atapl * kdelay_amount)
+adelayr = (atapr * kdelay_amount)
+
+
+; REVERB
+
+; send the dry signal and delay line to the reverb, amount with WINDOW
+arsendl = ((ainl * koriginal_to_reverb * kreverb_amount) + (adelayl * kdelay_to_reverb_amount * kreverb_amount)) * 0.8
+arsendr = ((ainr * koriginal_to_reverb * kreverb_amount) + (adelayr * kdelay_to_reverb_amount * kreverb_amount)) * 0.8
+denorm arsendl, arsendr  ;  what does this do?
+
+; stuff for reverb
+ilogtimemin = log(0.45)   ;  was 0.6
+ilogtimemax = log(1.001)  ;  Make is slightly larger than one, this will make the reverb stay for a long time (grows a tiny bit)
+kreverbtime = exp((sqrt(gkdensity) * (ilogtimemax - ilogtimemin)) + ilogtimemin)  ;  was without sqrt(), this makes a better response
+ilogfiltmin = log(200.0)  ;  was 800
+ilogfiltmax = log(15000.0)
+kdampfilt = exp(gkoverlap * (ilogfiltmax - ilogfiltmin) + ilogfiltmin)
+
+; CHORUS (HARMONIZER) within REVERB's path
+
+kestfrq  = 1000
+kgenfreq = kestfrq * 2
+kmaxvar  = 0.2
+imode    = 0
+iminfrq  = 1000
+iprd     = 0.04
+
+aeffectl harmon arsendl, kestfrq, kmaxvar, kpitch_dif * (kgenfreq * 0.5), kpitch_dif * (kgenfreq * 2.5), imode, iminfrq, iprd
+aeffectr harmon arsendr, kestfrq, kmaxvar, kpitch_dif * (kgenfreq * 0.5), kpitch_dif * (kgenfreq * 2.5), imode, iminfrq, iprd
+
+; attenuate the effect with Pitch
+aeffectl = aeffectl * kpitch_dif
+aeffectr = aeffectr * kpitch_dif
+
+; when filter is low, amplify it
+kdampfactor = ((1 - gkoverlap) / 0.7) + 0.7
+
+; SEND TO REVERB
+averbl, averbr reverbsc (((arsendl + aeffectl) * 0.5) * kdampfactor), (((arsendr + aeffectr)  * 0.5) * kdampfactor), kreverbtime, kdampfilt, sr, 0.2
+
+; NO CHORUS
+; averbl, averbr reverbsc arsendl, arsendr, kreverbtime, kdampfilt, sr, 0.2
+
+
+; OUTPUT, some clipping
+aoutl = (((averbl) + (adelayl) + (ainl * kmutedry)) * 0.8)
+aoutr = (((averbr) + (adelayr) + (ainr * kmutedry)) * 0.8)
+aclippedl clip aoutl, 2, 0.92
+aclippedr clip aoutr, 2, 0.92
+outs aclippedl, aclippedr
+endin
