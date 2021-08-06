@@ -1,5 +1,5 @@
 
-MARS AFFECTS v1.1, 2021-08-06
+MARS AFFECTS v1, 2021-07-17
 ----------------------------------------------
 Mars Affects, an effect instrument for the Qu-Bit Nebulae v2.
 Based on the original 'Effects' and 'World of Echo' instruments.
@@ -13,9 +13,6 @@ Reverb effect can be enriched with a Chorus-like effect.
 Two input modes: Stereo or 2x Mono mode. Output is Stereo in both modes.
 Independent control for the Dry or Delay signal going into the Reverb.
 Knob ranges and responses have been tweaked to go a bit more extreme.
-
-Fixed issue #1: Delay line could have a delay time set larger than the buffer, resulting in noisy static.
-
 
 Delay Section (Top three knobs)
 ----------------------------------------------

@@ -6,18 +6,18 @@ sr,48000
 nebconfigend
 
 /****************
- MARS AFFECTS v1.1, based on Original 'Effects' / 'World of Echo'
+ MARS AFFECTS v1, based on Original 'Effects' / 'World of Echo'
 
  * Overview of controls *
  * Pitch        - Reverb Chorus               [gkpitch]
  * Pitch Alt    - Chorus Pitch                [gkpitch_alt]
  * Speed        - Stereo Delay Skew           [gkspeed]
  * Start        - Delay Time                  [gkloopstart]
- * Start Alt    -                             [gkloopstart_alt]
+; * Start Alt    -                             [gkloopstart_alt]
  * Size         - Feedback                    [gkloopsize]
  * Size Alt     - Delay to Reverb (inv)       [gkloopsize_alt]
  * Density      - Reverb Time                 [gkdensity]
- * Density Alt  -                             [gkdensity_alt]
+; * Density Alt  -                             [gkdensity_alt]
  * Overlap      - Reverb Filter               [gkoverlap]
  * Overlap Alt  - Dry to Reverb (inv)         [gkoverlap_alt]
  * Blend        - Delay Amount                [gkblend]
@@ -29,11 +29,7 @@ nebconfigend
  * Source       - 2x Mono in mode             [gksource]
  * Reset        - (none)                      [gkreset]
  * Freeze       - 100% Wet                    [gkfreeze]
-
- Issues / Fixed
- #1 : Delay line could have a delay time set larger than the buffer, resulting in noisy static. Fixed in 1.1
-
-****************/
+ ****************/
 
 instr 1
 
@@ -105,22 +101,18 @@ kspeed_dif = ((exp(gkspeed - 0.6250) - 1) / 1.718282 * 2.5) ^ 3
 ktimel = (gkloopstart * (1.99 + kspeed_dif)) + (0.01)
 ktimer = (gkloopstart * (1.99 - kspeed_dif)) + (0.01)
 
-; add small portameto to changing values
 kdelaytimel portk ktimel, 0.1
 kdelaytimer portk ktimer, 0.1
 
 kfeedback = gkloopsize
 
-; #1 ktime_ / kdelaytime_ can be max 2.29(l) and 2.27(r), buffer was max 2
-; So one could address outside the buffer resulting in noisy static, changed buffer to 2.3 sec
-
-; left delay line
-abufoutl delayr 2.3
+; create a delay line
+abufoutl delayr 2.0
 atapl deltap3 kdelaytimel
 delayw ainl + (atapl * kfeedback)
 
-; right delay line
-abufoutr delayr 2.3
+; second delay line
+abufoutr delayr 2.0
 atapr deltap3 kdelaytimer
 delayw ainr + (atapr * kfeedback)
 
@@ -134,8 +126,7 @@ adelayr = (atapr * kdelay_amount)
 ; send the dry signal and delay line to the reverb, amount with WINDOW
 arsendl = ((ainl * koriginal_to_reverb * kreverb_amount) + (adelayl * kdelay_to_reverb_amount * kreverb_amount)) * 0.8
 arsendr = ((ainr * koriginal_to_reverb * kreverb_amount) + (adelayr * kdelay_to_reverb_amount * kreverb_amount)) * 0.8
-; "If CPU usage goes to 100% at the end of reverb tails, or you get audio glitches in processes that shouldn't use too much CPU, using denorm before the culprit opcode or process might solve the problem."
-denorm arsendl, arsendr
+denorm arsendl, arsendr  ;  what does this do?
 
 ; stuff for reverb
 ilogtimemin = log(0.45)   ;  was 0.6
