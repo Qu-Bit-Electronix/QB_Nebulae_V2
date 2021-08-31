@@ -15,6 +15,8 @@ def fix_string(string):
       raise ValueError('Warning: a scale value was found in the expected order')
 
     string = string[:match.start(1)] + num2 + string[match.end(1):match.start(2)] + num1 + string[match.end(2):]
+  else:
+    raise ValueError('Warning: a scale was present but the regex detection failed!')
 
   return string
 
