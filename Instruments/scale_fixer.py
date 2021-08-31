@@ -5,7 +5,7 @@ scale_reg = compile(r'scale +[A-Za-z_][A-Za-z_0-9]* *, *([0-9.\-]+) *, *([0-9.\-
 
 def fix_string(string):
   if not 'scale' in string:
-    return
+    return string
   match = scale_reg.search(string)
   if match is not None:
     num1 = match.group(1)
@@ -14,8 +14,7 @@ def fix_string(string):
     if (float(num1) > float(num2)):
       raise ValueError('Warning: a scale value was found in the expected order')
 
-    string = string[:match.start(1)] + num2 + string[match.end(1):]
-    string = string[:match.start(2)] + num1 + string[match.end(2):]
+    string = string[:match.start(1)] + num2 + string[match.end(1):match.start(2)] + num1 + string[match.end(2):]
 
   return string
 
