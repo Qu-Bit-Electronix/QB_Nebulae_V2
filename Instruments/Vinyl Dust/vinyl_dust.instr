@@ -18,9 +18,9 @@
 
 instr 1
 
-  kdens      scale gkdensity, 2, 2000    ; Density (Grain Rate)
-  kcutoff    scale gkloopstart, 40, 6000 ; Filter Cutoff (Loop Start)
-  kresonance scale gkloopsize, 0, 0.8    ; Resonance (Loop Size)
+  kdens      scale gkdensity, 2000, 2    ; Density (Grain Rate)
+  kcutoff    scale gkloopstart, 6000, 40 ; Filter Cutoff (Loop Start)
+  kresonance scale gkloopsize, 0.8, 0    ; Resonance (Loop Size)
 
   asig dust2 0.9, kdens                      ; Noise Source
   afilter moogvcf2 asig, kcutoff, kresonance ; Moog-style ladder filter

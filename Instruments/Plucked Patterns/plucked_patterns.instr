@@ -32,7 +32,7 @@ instr 1
 
   kfreezeflag init 0
 
-  kspeed scale gkspeed, 0, 4; Speed
+  kspeed scale gkspeed, 4, 0; Speed
 
   kDur  init    0.5
   kTrig metro   kspeed / kDur
@@ -44,11 +44,11 @@ endin
 
 instr 2
 
-  kgrainsize scale gkoverlap, 0, 0.98 ; Pluck Tone (grain size knob)
-  kpitch     scale gkpitch, -15, 9    ; Transpose (Pitch Knob)
-  kgrainrate scale gkdensity, 0.5, 2  ; Chosen Pitch Offset (rate knob)
-  kmix       scale gkblend, .00005, 1 ; Attack (mix knob)
-  kloopstart scale gkloopstart, 0, 1  ; Release (Start Knob)
+  kgrainsize scale gkoverlap, 0.98, 0 ; Pluck Tone (grain size knob)
+  kpitch     scale gkpitch, 9, -15    ; Transpose (Pitch Knob)
+  kgrainrate scale gkdensity, 2, 0.5  ; Chosen Pitch Offset (rate knob)
+  kmix       scale gkblend, 1, .00005 ; Attack (mix knob)
+  kloopstart scale gkloopstart, 1, 0  ; Release (Start Knob)
 
   kNote table rnd(i(kgrainrate)), giNotes, 1                ; read a random value from the function table
   aEnv linsegr 0, 0.5, 1, p3 - 0.105, i(kloopstart), 0.1, 0 ; amplitude envelope
