@@ -47,14 +47,14 @@ instr 1
 
 ; [Nebulae Controls]
 
-  kFM1freq      scale gkspeed, 0.01, 120   ; ~ fm#1 Frequency ~ [Speed]
-  kFM1carrier   scale gkblend, 0.01, 8     ; ~ fm#1 Carrier ~ [Mix]
-  kFM1modulator scale gkloopstart, 0.01, 8 ; ~ fm#1 Modulator ~ [Loop Start]
-  kFM1index     scale gkwindow, 0.01, 8    ; ~ fm#1 Index ~ [Glide]
-  kFM2freq      scale gkpitch, 0.01, 120   ; ~ fm#2 ~ [Pitch]
-  kFM2carrier   scale gkoverlap, 0.01, 8   ; ~ fm#2 Carrier ~ [Grain Size]
-  kFM2modulator scale gkdensity, 0.01, 8   ; ~ fm#2 Modulator ~ [Grain Rate]
-  kFM2index     scale gkloopsize, 0.01, 8  ; ~ fm#2 Index ~ [Loop Size]
+  kFM1freq      scale gkspeed, 120, 0.01   ; ~ fm#1 Frequency ~ [Speed]
+  kFM1carrier   scale gkblend, 8, 0.01     ; ~ fm#1 Carrier ~ [Mix]
+  kFM1modulator scale gkloopstart, 8, 0.01 ; ~ fm#1 Modulator ~ [Loop Start]
+  kFM1index     scale gkwindow, 8, 0.01    ; ~ fm#1 Index ~ [Glide]
+  kFM2freq      scale gkpitch, 120, 0.01   ; ~ fm#2 ~ [Pitch]
+  kFM2carrier   scale gkoverlap, 8, 0.01   ; ~ fm#2 Carrier ~ [Grain Size]
+  kFM2modulator scale gkdensity, 8, 0.01   ; ~ fm#2 Modulator ~ [Grain Rate]
+  kFM2index     scale gkloopsize, 8, 0.01  ; ~ fm#2 Index ~ [Loop Size]
 
 ; [Instrument]
 

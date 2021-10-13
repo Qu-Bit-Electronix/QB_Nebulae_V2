@@ -11,7 +11,7 @@ giDurs ftgen 0, 0, -100, -17, 0, 2, 30, 0.5, 75, 1, 90, 1.5
 
 instr 1
 
-  kspeed scale gkspeed, 0, 4 ; Speed
+  kspeed scale gkspeed, 4, 0 ; Speed
 
   kDur  init        0.5
   kTrig metro       kspeed / kDur
@@ -23,9 +23,9 @@ endin
 
 instr 2
 
-  kres     scale gkdensity, 0, 0.8    ; Control for Resonance
-  kcf      scale gkloopsize, 20, 6000 ; Control for Filter Cuttoff Frequency
-  kverbmix scale gkloopstart, 0, 0.35 ; Reverb Mix (Loop Start)
+  kres     scale gkdensity, 0.8, 0    ; Control for Resonance
+  kcf      scale gkloopsize, 6000, 20 ; Control for Filter Cuttoff Frequency
+  kverbmix scale gkloopstart, 0.35, 0 ; Reverb Mix (Loop Start)
 
   adrp dripwater 0.4, 0.09, 10, 1.5 ; Dripwater sound source
   asig clip adrp, 2, 0.9            ; Avoid drips that drip too loud

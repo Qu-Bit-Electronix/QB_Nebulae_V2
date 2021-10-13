@@ -51,10 +51,10 @@ instr 1
   endif
 
   ;get controllers
-  kpitch1  scale gkloopstart, 0, 11.22
-  kpitch2  scale gkloopsize, 0, 5.3
-  kpitch3  scale gkdensity, 0, 5.3
-  kpitch4  scale gkoverlap, 0, 5.3
+  kpitch1  scale gkloopstart, 11.22, 0
+  kpitch2  scale gkloopsize, 5.3, 0
+  kpitch3  scale gkdensity, 5.3, 0
+  kpitch4  scale gkoverlap, 5.3, 0
 
   ; remove ";" below (not this line!!) to round to "equal-tempered" semitones
   ;kpitch1  = (int(kpitch1*12))/12
@@ -78,18 +78,18 @@ instr 1
   kpitch4 limit kpitch4,0,336
 
   ;add separate portamento
-  kporta  scale gkblend, 0.002, .35
+  kporta  scale gkblend, .35, 0.002
   kpitch1 portk kpitch1, kporta
   kpitch2 portk kpitch2, kporta
   kpitch3 portk kpitch3, kporta
   kpitch4 portk kpitch4, kporta
 
   ;get amplitude controllers, smoothen
-  kamp2 scale gkwindow, 0, .2
+  kamp2 scale gkwindow, .2, 0
   kamp2 port kamp2, .004
-  kamp3 scale gkwindow, 0, .2
+  kamp3 scale gkwindow, .2, 0
   kamp3 port kamp3, .004
-  kamp4 scale gkwindow, 0, .2
+  kamp4 scale gkwindow, .2, 0
   kamp4 port kamp4, .004
 
   ;band-limited analog modeled oscillators
