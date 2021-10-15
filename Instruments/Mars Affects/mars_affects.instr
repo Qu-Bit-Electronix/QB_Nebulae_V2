@@ -1,0 +1,210 @@
+nebconfigbegin
+ksmps,1
+-B,512
+-b,128
+sr,48000
+nebconfigend
+
+/****************
+ MARS AFFECTS v1.3, based on Original 'Effects' / 'World of Echo'
+
+ * Overview of controls *
+ * Pitch        - Reverb Pitch RND - LFO      [gkpitch]
+ * Pitch Alt    - Pitch Depth and Feedback    [gkpitch_alt]
+ * Speed        - Stereo Delay Skew           [gkspeed]
+ * Start        - Delay Time                  [gkloopstart]
+ * Start Alt    -                             [gkloopstart_alt]
+ * Size         - Feedback                    [gkloopsize]
+ * Size Alt     - Delay to Reverb (inv)       [gkloopsize_alt]
+ * Density      - Reverb Time                 [gkdensity]
+ * Density Alt  - Pitch LFO Speed             [gkdensity_alt]
+ * Overlap      - Reverb Filter               [gkoverlap]
+ * Overlap Alt  - Dry to Reverb (inv)         [gkoverlap_alt]
+ * Blend        - Delay Amount                [gkblend]
+ * Blend Alt    - Left mix (inv)              [gkblend_alt]
+ * Window       - Reverb Amount               [gkwindow]
+ * Window Alt   - Right mix (inv)             [gkwindow_alt]
+ * Record       - Mute Incomming Signal       [gkrecord]
+ * File         - (none)                      [gkfilesel]
+ * Source       - 2x Mono in mode             [gksource]
+ * Reset        - (none)                      [gkreset]
+ * Freeze       - 100% Wet                    [gkfreeze]
+
+ Issues / Fixed / Rework
+ #1 : Delay line could have a delay time set larger than the buffer, resulting in noisy static. Fixed in 1.1
+ #2 : Delay feedback size 1 could break the reverb send, resulting in noisy static. Fixed in 1.2
+ #3 : Rewrite of the 'chorus' effect. Version 1.3
+ 
+****************/
+
+instr 1
+
+ainl, ainr inch 1, 2
+
+
+; PARAMETERS
+; ----------
+
+; RECORD and SOURCE - Mute incoming signal and Stereo / 2x Mono mode
+
+if gkrecord == 0 then
+  ainl = ainl * (1 - gkblend_alt)
+  ainr = ainr * (1 - gkwindow_alt)
+  if gksource == 1 then
+    atot = (ainl + ainr) * 0.8
+    ainl = atot
+    ainr = atot
+  endif
+else
+  ainl = 0
+  ainr = 0
+endif
+
+; FREEZE - Mute Dry
+
+kmutedry = 1
+if gkfreeze == 1 then
+  kmutedry = 0
+endif
+
+
+; BLEND and WINDOW - Set Delay and Reverb amount
+
+kdelay_amount = gkblend
+kreverb_amount = gkwindow
+
+
+; SIZE_ALT and OVERLAP_ALT - Set Delay/Dry to Reverb amount
+
+kdelay_to_reverb_amount = (1 - gkloopsize_alt)
+koriginal_to_reverb = (1 - gkoverlap_alt)
+
+
+; PITCH, PITCH_ALT, DENSITY_ALT - Set Chorus-like amount
+
+kpitch portk gkpitch, 0.05
+;kpitch = gkpitch
+kpitch_dif = abs((kpitch - 0.6000) * (2.5))  ;  [1.5 ~ 0 ~ 1], 1.5 for RANDOM effect, 1.0 for LFO effect
+;    printks2 "kpitch_dif %f\n", kpitch_dif
+
+;kpitch_alt = gkpitch_alt
+kpitch_alt portk gkpitch_alt, 0.1
+kdensity_alt = gkdensity_alt
+
+; FREQ - PITCH influences the speed from 
+klfo_freq = 1.5
+klfo_freq = (((kpitch_dif * 0.9) + 0.1) * klfo_freq)             ;  [0.15-1.5] cycles per second
+klfo_freq = (klfo_freq + (klfo_freq * kdensity_alt * 12) + 0.5)  ;  [0.15-1.5] - [1.95-19.5] cycles per second
+;    printks2 "klfo_freq %f\n", klfo_freq
+
+
+; SPEED - Delay skew in the stereo field. Pressing the speed knob will reset to '0.6250' which represents 'the middle'
+; Response to negative / positive is not linear (due to 0.6250 being the middle
+
+kspeed_dif = ((exp(gkspeed - 0.6250) - 1) / 1.718282 * 2.5) ^ 3
+
+
+; EFFECT FUNCTIONS
+; ----------------
+
+; DELAY
+
+ktimel = (gkloopstart * (1.99 + kspeed_dif)) + (0.01)
+ktimer = (gkloopstart * (1.99 - kspeed_dif)) + (0.01)
+
+; add small slew to changing values
+kdelaytimel portk ktimel, 0.1
+kdelaytimer portk ktimer, 0.1
+
+; #2 Delay feedback size 1 could break the reverb send, resulting in noisy static, changed to * 0.95
+kfeedback_del portk (gkloopsize * 0.95), 0.1
+
+; #1 ktime_ / kdelaytime_ can be max 2.29(l) and 2.27(r), buffer was max 2
+; So one could address outside the buffer resulting in noisy static, changed buffer to 2.3 sec
+
+; left delay line
+abufoutl delayr 2.3
+atapl deltap3 kdelaytimel
+delayw ainl + (atapl * kfeedback_del)
+
+; right delay line
+abufoutr delayr 2.3
+atapr deltap3 kdelaytimer
+delayw ainr + (atapr * kfeedback_del)
+
+; attenuate delay line with BLEND, it does not contain the original signal
+adelayl = (atapl * kdelay_amount)
+adelayr = (atapr * kdelay_amount)
+
+
+; REVERB
+
+; send the dry signal and delay line to the reverb, amount with WINDOW
+arsendl = ((ainl * koriginal_to_reverb * kreverb_amount) + (adelayl * kdelay_to_reverb_amount * kreverb_amount)) * 0.7
+arsendr = ((ainr * koriginal_to_reverb * kreverb_amount) + (adelayr * kdelay_to_reverb_amount * kreverb_amount)) * 0.7
+; "If CPU usage goes to 100% at the end of reverb tails, or you get audio glitches in processes that shouldn't use too much CPU, using denorm before the culprit opcode or process might solve the problem."
+denorm arsendl, arsendr
+
+; stuff for reverb
+ilogtimemin = log(0.6)    ;  was 0.6
+ilogtimemax = log(1.001)  ;  Make is slightly larger than one, this will make the reverb stay for a long time (grows a tiny bit)
+kreverbtime = exp((sqrt(gkdensity) * (ilogtimemax - ilogtimemin)) + ilogtimemin)  ;  was without sqrt(), this makes a better response
+ilogfiltmin = log(200.0)  ;  was 800
+ilogfiltmax = log(15000.0)
+kdampfilt = exp(gkoverlap * (ilogfiltmax - ilogfiltmin) + ilogfiltmin)
+
+
+; FLANGER within REVERB's path
+; #3 Rewrite of the 'chorus' effect
+
+; flanger feedback amount, can be more extreme with the kpitch_alt
+kflan_fbck = 0.2 
+kflan_fbck = (kflan_fbck + (kflan_fbck * kpitch_alt * 3))  ;  0.2 + ([0-0.2] * 3) = 0.2 - 0.8
+
+; what is the max flanger delay
+kflan_delay = 0.01
+kflan_delay = kflan_delay + (kflan_delay * kpitch_alt * 2)  ;  0.01 + ([0-0.01] * 2) = 0.01 - 0.03
+;    printks2 "kflan_delay %f\n", kflan_delay
+
+if gkpitch >= 0.6 then
+; LFO
+  ; have an LFO with amplitude of 1 and sine effect; sine sounds better when faster than a triangle
+  kampl = 0.5
+  ishape = 0 ; 0 = sin, 1 = tri
+  alfo_val lfo kampl, klfo_freq, ishape
+  aeffectdel = (alfo_val + 0.5) * kflan_delay  ;  [0-1] * kflan_delay
+else 
+; RANDOM
+  kran_val randomh 0, 1, (klfo_freq * 15), 3
+  kran_res = kran_val * (kflan_delay * 1.1) ;  [0-1] * kflan_delay
+  kran_res portk kran_res, 0.02
+  aeffectdel = a(kran_res)  ;  convert the 'slewed' k-rate to a-rate for flanger
+;      printks2 "klfo_freq %f\n", klfo_freq
+endif
+;    printks "aeffectdel %f\n", 0.1, aeffectdel
+
+aeffectl flanger arsendl, aeffectdel * 1.05, kflan_fbck  ;  little bit of stereo effect in the flanger delay
+aeffectr flanger arsendr, aeffectdel * 0.95, kflan_fbck  ;  little bit of stereo effect in the flanger delay
+
+; attenuate the effect with Pitch
+aeffectl = aeffectl * kpitch_dif
+aeffectr = aeffectr * kpitch_dif
+
+; when filter is low, amplify it
+kdampfactor = ((1 - gkoverlap) / 0.6) + 0.7
+
+; SEND TO REVERB
+averbl, averbr reverbsc (((arsendl + aeffectl) * 0.6) * kdampfactor), (((arsendr + aeffectr)  * 0.6) * kdampfactor), kreverbtime, kdampfilt, sr, 0.2
+
+
+; NO EFFECT
+; averbl, averbr reverbsc arsendl, arsendr, kreverbtime, kdampfilt, sr, 0.2
+
+
+; OUTPUT, some clipping
+aoutl = ((averbl + (adelayl) + (ainl * kmutedry)) * 0.7)
+aoutr = ((averbr + (adelayr) + (ainr * kmutedry)) * 0.7)
+aclippedl clip aoutl, 2, 0.90
+aclippedr clip aoutr, 2, 0.90
+outs aclippedl, aclippedr
+endin
