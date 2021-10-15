@@ -19,13 +19,13 @@
 
 instr 1 ; Fractal Noise for Nebulae
 
-  kpregain   scale gkspeed, 0, 2         ; Pre Gain (Speed)
-  kpostgain  scale gkpitch, 0, 2         ; Post Gain (Pitch)
-  kshape1    scale gkwindow, 0, 5        ; Wave Shape Positive (Mix)
-  kshape2    scale gkoverlap, 0, 5       ; Wave Shape Negative (Grain Size)
-  kbeta      scale gkdensity, 0, 2       ; Beta (Grain Rate)
-  kcutoff    scale gkloopstart, 40, 6000 ; Filter Cutoff (Loop Start)
-  kresonance scale gkloopsize, 0, 0.8    ; Resonance (Loop Size)
+  kpregain   scale gkspeed, 2, 0         ; Pre Gain (Speed)
+  kpostgain  scale gkpitch, 2, 0         ; Post Gain (Pitch)
+  kshape1    scale gkwindow, 5, 0        ; Wave Shape Positive (Mix)
+  kshape2    scale gkoverlap, 5, 0       ; Wave Shape Negative (Grain Size)
+  kbeta      scale gkdensity, 2, 0       ; Beta (Grain Rate)
+  kcutoff    scale gkloopstart, 6000, 40 ; Filter Cutoff (Loop Start)
+  kresonance scale gkloopsize, 0.8, 0    ; Resonance (Loop Size)
 
   asig fractalnoise 0.05, kbeta                                 ; Noise
   afilter moogvcf2 asig, kcutoff, kresonance                    ; Moog-style ladder filter
