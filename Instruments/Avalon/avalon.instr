@@ -1,0 +1,387 @@
+nebconfigbegin
+ksmps,128
+-B,2048
+-b,128
+size_alt,0.5
+pitch_alt,0.5
+file,incremental,falling
+sr,48000
+nebconfigend
+
+/****************
+ AVALON - "Morphing Nebulaeum" v1.0, 17-10-2021, inspired by the Morphing Terrarium E350 and the loading of samples from the Cloud Terrarium E352
+
+ * Overview of controls *
+ * Pitch        - Coarse tune     [gkpitch]
+ * Pitch Alt    - Fine tune       [gkpitch_alt]     ; If necessary...
+ * Speed        - Z course        [gkspeed]         ; Best candidate for Z. It has a higher resolution than other knobs
+ * Start        - X               [gkloopstart]
+ * Start Alt    - ---             [gkloopstart_alt]
+ * Size         - Z fine          [gkloopsize]
+ * Size Alt     - Z fine range    [gkloopsize_alt]  ; range of -/+ 'gkloopsize_alt' samples
+ * Density      - Y               [gkdensity]
+ * Density Alt  - ---             [gkdensity_alt]
+ * Overlap      - ---             [gkoverlap]
+ * Overlap Alt  - ---             [gkoverlap_alt]
+ * Blend        - XY-Z morph mode [gkblend]         ; range from 1 to 5 (CCW, 9-10, 12, 14-15, CW)
+ * Blend Alt    - ---             [gkblend_alt]
+ * Window       - ---             [gkwindow]
+ * Window Alt   - ---             [gkwindow_alt]
+ * Record       - ---             [gkrecord]
+ * File         - ---             [gkfilesel]
+ * Source       - ---             [gksource]
+ * Reset        - ---             [gkreset]
+ * Freeze       - ---             [gkfreeze]
+
+****************/
+
+instr 1
+
+; === INITIALIZATION
+
+kInit init 1
+if kInit == 1 then
+  ; Do things at init time
+  ; The function 'init' can be used in statements, but this is evaluated every cycle. Now only 1 'init' needs to be evaluated
+
+  ; Number of waves in a XY-row or Z-bank
+  knumwavesX = 8
+  knumwavesY = 8
+  knumwavesZ = 64
+
+  ; Volume arrays. Only 16 are needed for X and Y, 64 for Z
+  kVolX[] init 8
+  kVolY[] init 8
+  kVolZ[] init 64
+
+  ; Nebulae V2 loaded files will start at table 400, 399 + 'gkfilesel' starts at 400.
+  gkfilesel_offset = 399
+
+  ; 'init' is over
+  kInit = 0
+endif
+
+; gkfilesel - index of table containing audio file data. 'gkfilesel' is updated (and rotated) on 'File' press.
+kbank = gkfilesel_offset + gkfilesel + 1
+
+;; PITCH FACTOR
+
+kpitch_scale scale gkpitch, 2, -3
+kpitch_fine = kpitch_scale * (1 + ((gkpitch_alt - 0.5) / 10))
+
+kpitch pow 2, kpitch_fine
+kpitch = kpitch * (130.8128 / ( sr / 256 ))  ;  Compensate for pitch, to have 0v = C3 = 130.8128 Hz
+
+
+;; === LOOPING PHASOR POINTS AND ASSIGN TO TABLE
+;; use phasor and tablekt, with only 'loscil', you can not set a start point of the sample, so it will start always at 0 and then loops from 512 to 768
+
+;; param 1 = pitch, 1 = 1x as fast, 2 = 2x as fast (1 oct up), 4 = 4x as fast (2 oct up)
+;; param 2 = start loop point
+;; param 3 = end loop point (not including 'last' point... (tested with square after sine (point 255 = 0, point 256 = 1)))
+;; param 4 = '1' = forward loop
+;; param 5 = point to start playback
+
+alph11 lphasor kpitch, 00000, 00256, 1, 00000
+alph21 lphasor kpitch, 00256, 00512, 1, 00256
+alph31 lphasor kpitch, 00512, 00768, 1, 00512
+alph41 lphasor kpitch, 00768, 01024, 1, 00768
+alph51 lphasor kpitch, 01024, 01280, 1, 01024
+alph61 lphasor kpitch, 01280, 01536, 1, 01280
+alph71 lphasor kpitch, 01536, 01792, 1, 01536
+alph81 lphasor kpitch, 01792, 02048, 1, 01792
+
+alph12 lphasor kpitch, 02048, 02304, 1, 02048
+alph22 lphasor kpitch, 02304, 02560, 1, 02304
+alph32 lphasor kpitch, 02560, 02816, 1, 02560
+alph42 lphasor kpitch, 02816, 03072, 1, 02816
+alph52 lphasor kpitch, 03072, 03328, 1, 03072
+alph62 lphasor kpitch, 03328, 03584, 1, 03328
+alph72 lphasor kpitch, 03584, 03840, 1, 03584
+alph82 lphasor kpitch, 03840, 04096, 1, 03840
+
+alph13 lphasor kpitch, 04096, 04352, 1, 04096
+alph23 lphasor kpitch, 04352, 04608, 1, 04352
+alph33 lphasor kpitch, 04608, 04864, 1, 04608
+alph43 lphasor kpitch, 04864, 05120, 1, 04864
+alph53 lphasor kpitch, 05120, 05376, 1, 05120
+alph63 lphasor kpitch, 05376, 05632, 1, 05376
+alph73 lphasor kpitch, 05632, 05888, 1, 05632
+alph83 lphasor kpitch, 05888, 06144, 1, 05888
+
+alph14 lphasor kpitch, 06144, 06400, 1, 06144
+alph24 lphasor kpitch, 06400, 06656, 1, 06400
+alph34 lphasor kpitch, 06656, 06912, 1, 06656
+alph44 lphasor kpitch, 06912, 07168, 1, 06912
+alph54 lphasor kpitch, 07168, 07424, 1, 07168
+alph64 lphasor kpitch, 07424, 07680, 1, 07424
+alph74 lphasor kpitch, 07680, 07936, 1, 07680
+alph84 lphasor kpitch, 07936, 08192, 1, 07936
+
+alph15 lphasor kpitch, 08192, 08448, 1, 08192
+alph25 lphasor kpitch, 08448, 08704, 1, 08448
+alph35 lphasor kpitch, 08704, 08960, 1, 08704
+alph45 lphasor kpitch, 08960, 09216, 1, 08960
+alph55 lphasor kpitch, 09216, 09472, 1, 09216
+alph65 lphasor kpitch, 09472, 09728, 1, 09472
+alph75 lphasor kpitch, 09728, 09984, 1, 09728
+alph85 lphasor kpitch, 09984, 10240, 1, 09984
+
+alph16 lphasor kpitch, 10240, 10496, 1, 10240
+alph26 lphasor kpitch, 10496, 10752, 1, 10496
+alph36 lphasor kpitch, 10752, 11008, 1, 10752
+alph46 lphasor kpitch, 11008, 11264, 1, 11008
+alph56 lphasor kpitch, 11264, 11520, 1, 11264
+alph66 lphasor kpitch, 11520, 11776, 1, 11520
+alph76 lphasor kpitch, 11776, 12032, 1, 11776
+alph86 lphasor kpitch, 12032, 12288, 1, 12032
+
+alph17 lphasor kpitch, 12288, 12544, 1, 12288
+alph27 lphasor kpitch, 12544, 12800, 1, 12544
+alph37 lphasor kpitch, 12800, 13056, 1, 12800
+alph47 lphasor kpitch, 13056, 13312, 1, 13056
+alph57 lphasor kpitch, 13312, 13568, 1, 13312
+alph67 lphasor kpitch, 13568, 13824, 1, 13568
+alph77 lphasor kpitch, 13824, 14080, 1, 13824
+alph87 lphasor kpitch, 14080, 14336, 1, 14080
+
+alph18 lphasor kpitch, 14336, 14592, 1, 14336
+alph28 lphasor kpitch, 14592, 14848, 1, 14592
+alph38 lphasor kpitch, 14848, 15104, 1, 14848
+alph48 lphasor kpitch, 15104, 15360, 1, 15104
+alph58 lphasor kpitch, 15360, 15616, 1, 15360
+alph68 lphasor kpitch, 15616, 15872, 1, 15616
+alph78 lphasor kpitch, 15872, 16128, 1, 15872
+alph88 lphasor kpitch, 16128, 16384, 1, 16128
+
+; -- table assign
+
+asig11 tablekt alph11, kbank
+asig21 tablekt alph21, kbank
+asig31 tablekt alph31, kbank
+asig41 tablekt alph41, kbank
+asig51 tablekt alph51, kbank
+asig61 tablekt alph61, kbank
+asig71 tablekt alph71, kbank
+asig81 tablekt alph81, kbank
+              
+asig12 tablekt alph12, kbank
+asig22 tablekt alph22, kbank
+asig32 tablekt alph32, kbank
+asig42 tablekt alph42, kbank
+asig52 tablekt alph52, kbank
+asig62 tablekt alph62, kbank
+asig72 tablekt alph72, kbank
+asig82 tablekt alph82, kbank
+              
+asig13 tablekt alph13, kbank
+asig23 tablekt alph23, kbank
+asig33 tablekt alph33, kbank
+asig43 tablekt alph43, kbank
+asig53 tablekt alph53, kbank
+asig63 tablekt alph63, kbank
+asig73 tablekt alph73, kbank
+asig83 tablekt alph83, kbank
+              
+asig14 tablekt alph14, kbank
+asig24 tablekt alph24, kbank
+asig34 tablekt alph34, kbank
+asig44 tablekt alph44, kbank
+asig54 tablekt alph54, kbank
+asig64 tablekt alph64, kbank
+asig74 tablekt alph74, kbank
+asig84 tablekt alph84, kbank
+              
+asig15 tablekt alph15, kbank
+asig25 tablekt alph25, kbank
+asig35 tablekt alph35, kbank
+asig45 tablekt alph45, kbank
+asig55 tablekt alph55, kbank
+asig65 tablekt alph65, kbank
+asig75 tablekt alph75, kbank
+asig85 tablekt alph85, kbank
+              
+asig16 tablekt alph16, kbank
+asig26 tablekt alph26, kbank
+asig36 tablekt alph36, kbank
+asig46 tablekt alph46, kbank
+asig56 tablekt alph56, kbank
+asig66 tablekt alph66, kbank
+asig76 tablekt alph76, kbank
+asig86 tablekt alph86, kbank
+              
+asig17 tablekt alph17, kbank
+asig27 tablekt alph27, kbank
+asig37 tablekt alph37, kbank
+asig47 tablekt alph47, kbank
+asig57 tablekt alph57, kbank
+asig67 tablekt alph67, kbank
+asig77 tablekt alph77, kbank
+asig87 tablekt alph87, kbank
+              
+asig18 tablekt alph18, kbank
+asig28 tablekt alph28, kbank
+asig38 tablekt alph38, kbank
+asig48 tablekt alph48, kbank
+asig58 tablekt alph58, kbank
+asig68 tablekt alph68, kbank
+asig78 tablekt alph78, kbank
+asig88 tablekt alph88, kbank
+
+;; === VOLUMES
+
+; -- reset the volumes
+
+kcnt = 0
+until kcnt=knumwavesX do
+  kVolX[kcnt] = 0
+  kVolY[kcnt] = 0 ; combine Y
+  kVolZ[kcnt] = 0 ; combine Z 0-7
+  kcnt = kcnt + 1
+od
+
+until kcnt=knumwavesZ do
+  kVolZ[kcnt] = 0
+  kcnt = kcnt + 1
+od
+
+; -- calculate the volumes
+
+; X volumes
+kPosX portk (gkloopstart * (knumwavesX - 1)), 0.03
+
+kIndexX = int(kPosX)
+kVolX[kIndexX+0] = (kIndexX + 1) - kPosX
+if (kIndexX < knumwavesX - 1) then
+  kVolX[kIndexX+1] = 1 - ((kIndexX + 1) - kPosX)
+endif
+
+; Y volumes
+kPosY portk (gkdensity * (knumwavesY - 1)), 0.03
+
+kIndexY = int(kPosY)
+kVolY[kIndexY+0] = (kIndexY + 1) - kPosY
+if (kIndexY < knumwavesY - 1) then
+  kVolY[kIndexY+1] = 1 - ((kIndexY + 1) - kPosY)
+endif
+
+; Z volumes
+
+; -- set the Z position fine range
+
+if gkloopsize_alt < 0.1 then ;; Fully CCW
+  kPosZfineRange = 1
+elseif gkloopsize_alt < 0.33 then
+  kPosZfineRange = 2
+elseif gkloopsize_alt < 0.66 then
+  kPosZfineRange = 4  ; 'half a row width'
+elseif gkloopsize_alt < 0.9 then
+  kPosZfineRange = 6
+else ;; Fully CW
+  kPosZfineRange = 8  ; 'one row width'
+endif
+
+kPosZfine = ((gkloopsize * kPosZfineRange) - (kPosZfineRange / 2))
+kPosZ portk (gkspeed * (knumwavesZ - 1) + kPosZfine), 0.03
+
+kPosZ limit kPosZ, 0, 63
+
+kIndexZ = int(kPosZ + 0.000001)
+kVolZ[kIndexZ+0] = (kIndexZ + 1) - kPosZ
+if (kIndexZ < knumwavesZ - 1) then
+  kVolZ[kIndexZ+1] = 1 - ((kIndexZ + 1) - kPosZ)
+endif
+
+;printks "kIndexZ %f\n", 1, kIndexZ
+;printks "kPosZfineRange %f\n", 1, kPosZfineRange
+;printks2 "kVolZ[63] %f\n", kVolZ[63]
+
+; Each Y-row will have 1 or 2 X's (samples) which will generate sound
+
+asigY1 = ((asig11 * kVolX[0]) + (asig21 * kVolX[1]) + (asig31 * kVolX[2]) + (asig41 * kVolX[3]) \
+       +  (asig51 * kVolX[4]) + (asig61 * kVolX[5]) + (asig71 * kVolX[6]) + (asig81 * kVolX[7])) * 0.8
+
+asigY2 = ((asig12 * kVolX[0]) + (asig22 * kVolX[1]) + (asig32 * kVolX[2]) + (asig42 * kVolX[3]) \
+       +  (asig52 * kVolX[4]) + (asig62 * kVolX[5]) + (asig72 * kVolX[6]) + (asig82 * kVolX[7])) * 0.8
+
+asigY3 = ((asig13 * kVolX[0]) + (asig23 * kVolX[1]) + (asig33 * kVolX[2]) + (asig43 * kVolX[3]) \
+       +  (asig53 * kVolX[4]) + (asig63 * kVolX[5]) + (asig73 * kVolX[6]) + (asig83 * kVolX[7])) * 0.8
+
+asigY4 = ((asig14 * kVolX[0]) + (asig24 * kVolX[1]) + (asig34 * kVolX[2]) + (asig44 * kVolX[3]) \
+       +  (asig54 * kVolX[4]) + (asig64 * kVolX[5]) + (asig74 * kVolX[6]) + (asig84 * kVolX[7])) * 0.8
+
+asigY5 = ((asig15 * kVolX[0]) + (asig25 * kVolX[1]) + (asig35 * kVolX[2]) + (asig45 * kVolX[3]) \
+       +  (asig55 * kVolX[4]) + (asig65 * kVolX[5]) + (asig75 * kVolX[6]) + (asig85 * kVolX[7])) * 0.8
+
+asigY6 = ((asig16 * kVolX[0]) + (asig26 * kVolX[1]) + (asig36 * kVolX[2]) + (asig46 * kVolX[3]) \
+       +  (asig56 * kVolX[4]) + (asig66 * kVolX[5]) + (asig76 * kVolX[6]) + (asig86 * kVolX[7])) * 0.8
+
+asigY7 = ((asig17 * kVolX[0]) + (asig27 * kVolX[1]) + (asig37 * kVolX[2]) + (asig47 * kVolX[3]) \
+       +  (asig57 * kVolX[4]) + (asig67 * kVolX[5]) + (asig77 * kVolX[6]) + (asig87 * kVolX[7])) * 0.8
+
+asigY8 = ((asig18 * kVolX[0]) + (asig28 * kVolX[1]) + (asig38 * kVolX[2]) + (asig48 * kVolX[3]) \
+       +  (asig58 * kVolX[4]) + (asig68 * kVolX[5]) + (asig78 * kVolX[6]) + (asig88 * kVolX[7])) * 0.8
+
+
+; Now make only 1 or 2 Y-rows be audible. The audible sound will be the 'dialed in' X and Y coordinates
+
+asigXY = ((asigY1 * kVolY[0]) + (asigY2 * kVolY[1]) + (asigY3 * kVolY[2]) + (asigY4 * kVolY[3]) \
+       +  (asigY5 * kVolY[4]) + (asigY6 * kVolY[5]) + (asigY7 * kVolY[6]) + (asigY8 * kVolY[7])) * 0.8
+
+; Make the Z sound. Only 1 or 2 samples will generate sound
+
+asigZ = ((asig11 * kVolZ[00]) + (asig21 * kVolZ[01]) + (asig31 * kVolZ[02]) + (asig41 * kVolZ[03]) \
+      +  (asig51 * kVolZ[04]) + (asig61 * kVolZ[05]) + (asig71 * kVolZ[06]) + (asig81 * kVolZ[07]) \
+      +  (asig12 * kVolZ[08]) + (asig22 * kVolZ[09]) + (asig32 * kVolZ[10]) + (asig42 * kVolZ[11]) \
+      +  (asig52 * kVolZ[12]) + (asig62 * kVolZ[13]) + (asig72 * kVolZ[14]) + (asig82 * kVolZ[15]) \
+      +  (asig13 * kVolZ[16]) + (asig23 * kVolZ[17]) + (asig33 * kVolZ[18]) + (asig43 * kVolZ[19]) \
+      +  (asig53 * kVolZ[20]) + (asig63 * kVolZ[21]) + (asig73 * kVolZ[22]) + (asig83 * kVolZ[23]) \
+      +  (asig14 * kVolZ[24]) + (asig24 * kVolZ[25]) + (asig34 * kVolZ[26]) + (asig44 * kVolZ[27]) \
+      +  (asig54 * kVolZ[28]) + (asig64 * kVolZ[29]) + (asig74 * kVolZ[30]) + (asig84 * kVolZ[31]) \
+      +  (asig15 * kVolZ[32]) + (asig25 * kVolZ[33]) + (asig35 * kVolZ[34]) + (asig45 * kVolZ[35]) \
+      +  (asig55 * kVolZ[36]) + (asig65 * kVolZ[37]) + (asig75 * kVolZ[38]) + (asig85 * kVolZ[39]) \
+      +  (asig16 * kVolZ[40]) + (asig26 * kVolZ[41]) + (asig36 * kVolZ[42]) + (asig46 * kVolZ[43]) \
+      +  (asig56 * kVolZ[44]) + (asig66 * kVolZ[45]) + (asig76 * kVolZ[46]) + (asig86 * kVolZ[47]) \
+      +  (asig17 * kVolZ[48]) + (asig27 * kVolZ[49]) + (asig37 * kVolZ[50]) + (asig47 * kVolZ[51]) \
+      +  (asig57 * kVolZ[52]) + (asig67 * kVolZ[53]) + (asig77 * kVolZ[54]) + (asig87 * kVolZ[55]) \
+      +  (asig18 * kVolZ[56]) + (asig28 * kVolZ[57]) + (asig38 * kVolZ[58]) + (asig48 * kVolZ[59]) \
+      +  (asig58 * kVolZ[60]) + (asig68 * kVolZ[61]) + (asig78 * kVolZ[62]) + (asig88 * kVolZ[63])) * 0.76
+
+
+if gkblend_alt < 0.1 then ;; Fully CCW
+  kXYZMorphMode = 1  ;; R channel (Z):  Morph L=XY into R=Z in the middle (middle result, R=XYZ) and then 'unmorph' (end result, R=XY). L channel (XY) is unchanged.
+elseif gkblend_alt < 0.33 then
+  kXYZMorphMode = 2  ;; L channel (XY): Morph R=Z into L=XY in the middle (middle result, L=XYZ) and then 'unmorph' (end result, L=Z). R channel (Z) is unchanged.
+elseif gkblend_alt < 0.66 then
+  kXYZMorphMode = 3  ;; Morph L=XY into R=Z and R=Z into L=XY (result, R=XYZ and L=XYZ)
+elseif gkblend_alt < 0.9 then
+  kXYZMorphMode = 4  ;; Morph L=XY into R=Z and R=Z into L=XY in the middle (middle result, R=XYZ and L=XYZ) and then 'unmorph' (end result is swapped, R=Z and L=XY)
+else ;; Fully CW
+  kXYZMorphMode = 5  ;; Morph L=XY, R=XY into R=Z, L=Z in the middle (middle result, R=XYZ and L=XYZ) and then 'unmorph' (end result, R=Z and L=Z)
+endif
+
+kBlendFact scale gkblend, 0.8, 1
+
+if kXYZMorphMode = 1 then
+  aoutL = asigXY
+;  aoutR = (asigZ + (asigXY * gkblend)) * kBlendFact  ;   CW = XYZ
+  aoutR = ((asigZ * (1-gkblend)) + (asigXY * gkblend))
+elseif kXYZMorphMode = 2 then
+;  aoutL = (asigXY + (asigZ * gkblend)) * kBlendFact  ;   CW = XYZ
+  aoutL = ((asigXY * (1-gkblend)) + (asigZ * gkblend))
+  aoutR = asigZ
+elseif kXYZMorphMode = 3 then
+  aoutL = (asigXY + (asigZ * gkblend)) * kBlendFact
+  aoutR = (asigZ + (asigXY * gkblend)) * kBlendFact
+elseif kXYZMorphMode = 4 then
+  aoutL = ((asigXY * (1-gkblend)) + (asigZ * gkblend))
+  aoutR = ((asigZ * (1-gkblend)) + (asigXY * gkblend))
+else ;; kXYZMorphMode = 5
+  aoutL = ((asigXY * (1-gkblend)) + (asigZ * gkblend))
+  aoutR = ((asigXY * (1-gkblend)) + (asigZ * gkblend))
+endif
+
+outs aoutL, aoutR
+
+endin
+
