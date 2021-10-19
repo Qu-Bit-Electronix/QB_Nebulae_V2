@@ -4,12 +4,13 @@ ksmps,128
 -b,128
 size_alt,0.5
 pitch_alt,0.5
+reset,triggered,rising
 file,incremental,falling
 sr,48000
 nebconfigend
 
 /****************
- AVALON - "Morphing Nebulaeum" v1.0, 17-10-2021, inspired by the Morphing Terrarium E350 and the loading of samples from the Cloud Terrarium E352
+ AVALON - "Morphing Nebulaeum" v1.1, 19-10-2021, inspired by the Morphing Terrarium E350 and the loading of samples from the Cloud Terrarium E352
 
  * Overview of controls *
  * Pitch        - Coarse tune     [gkpitch]
@@ -28,10 +29,13 @@ nebconfigend
  * Window       - ---             [gkwindow]
  * Window Alt   - ---             [gkwindow_alt]
  * Record       - ---             [gkrecord]
- * File         - ---             [gkfilesel]
+ * File         - Next bank       [gkfilesel]
  * Source       - ---             [gksource]
- * Reset        - ---             [gkreset]
+ * Reset        - Reset to bank 0 [gkreset]         ; or advance 5 banks of consecutive Reset presses
  * Freeze       - ---             [gkfreeze]
+
+ Issues / Fixed / Rework / Enhancement
+ #1 : Pressing Reset will return to bank 0 (first bank). Consecutive presses will advance 5 banks. Added in 1.1
 
 ****************/
 
@@ -57,12 +61,52 @@ if kInit == 1 then
   ; Nebulae V2 loaded files will start at table 400, 399 + 'gkfilesel' starts at 400.
   gkfilesel_offset = 399
 
+  ; On every 'File press', 'gkfilesel' is set to the internal 'Current file index'.
+  ; This means when 'gkfilesel' would manually be reset to '0' and 'File' is being pressed, it does not advance to '1', but to 'Current file index + 1'.
+  ; We need to make our own 'Press File' and 'Selected File' meganism
+  kfilesel = gkfilesel  ; Store the 'saved' (last selected) wavetable bank
+  gkfilesel_old = gkfilesel
+  if kfilesel = 0 then
+    kreset = 1
+  endif
+
   ; 'init' is over
   kInit = 0
 endif
 
+
+;; BANK SELECT
+
+; Detect Reset
+kresettrig trigger gkreset, 0.5, 0
+
+; Detect File press, does not work 100% with a trigger
+if gkfilesel_old != gkfilesel then
+  gkfilesel_old = gkfilesel
+  kreset = 0
+  kfilesel = kfilesel + 1
+endif
+
+if kresettrig == 1 then
+  if kreset = 0 then
+    ; when reset is pressed after a File press (reset = 0), reset to wavetable bank 0
+    kfilesel = 0
+    kreset = 1
+  else
+    ; when reset is pressed directly after reset (reset = 1), advance 5 wavetables banks
+    kfilesel = kfilesel + 5
+  endif
+endif
+
+; If we would advance further than the number of loaded waveform banks, reset to 0
+if kfilesel > ginumfiles - 1 then
+  kreset = 1
+  kfilesel = 0
+endif
+
 ; gkfilesel - index of table containing audio file data. 'gkfilesel' is updated (and rotated) on 'File' press.
-kbank = gkfilesel_offset + gkfilesel + 1
+kbank = gkfilesel_offset + kfilesel + 1
+
 
 ;; PITCH FACTOR
 
@@ -292,8 +336,6 @@ if (kIndexZ < knumwavesZ - 1) then
   kVolZ[kIndexZ+1] = 1 - ((kIndexZ + 1) - kPosZ)
 endif
 
-;printks "kIndexZ %f\n", 1, kIndexZ
-;printks "kPosZfineRange %f\n", 1, kPosZfineRange
 ;printks2 "kVolZ[63] %f\n", kVolZ[63]
 
 ; Each Y-row will have 1 or 2 X's (samples) which will generate sound
@@ -355,9 +397,9 @@ elseif gkblend_alt < 0.33 then
 elseif gkblend_alt < 0.66 then
   kXYZMorphMode = 3  ;; Morph L=XY into R=Z and R=Z into L=XY (result, R=XYZ and L=XYZ)
 elseif gkblend_alt < 0.9 then
-  kXYZMorphMode = 4  ;; Morph L=XY into R=Z and R=Z into L=XY in the middle (middle result, R=XYZ and L=XYZ) and then 'unmorph' (end result is swapped, R=Z and L=XY)
+  kXYZMorphMode = 4  ;; Morph L=XY, R=XY into R=Z, L=Z in the middle (middle result, R=XYZ and L=XYZ) and then 'unmorph' (end result, R=Z and L=Z)
 else ;; Fully CW
-  kXYZMorphMode = 5  ;; Morph L=XY, R=XY into R=Z, L=Z in the middle (middle result, R=XYZ and L=XYZ) and then 'unmorph' (end result, R=Z and L=Z)
+  kXYZMorphMode = 5  ;; Morph L=XY into R=Z and R=Z into L=XY in the middle (middle result, R=XYZ and L=XYZ) and then 'unmorph' (end result is swapped, R=Z and L=XY)
 endif
 
 kBlendFact scale gkblend, 0.8, 1
@@ -375,13 +417,12 @@ elseif kXYZMorphMode = 3 then
   aoutR = (asigZ + (asigXY * gkblend)) * kBlendFact
 elseif kXYZMorphMode = 4 then
   aoutL = ((asigXY * (1-gkblend)) + (asigZ * gkblend))
-  aoutR = ((asigZ * (1-gkblend)) + (asigXY * gkblend))
+  aoutR = ((asigXY * (1-gkblend)) + (asigZ * gkblend))
 else ;; kXYZMorphMode = 5
   aoutL = ((asigXY * (1-gkblend)) + (asigZ * gkblend))
-  aoutR = ((asigXY * (1-gkblend)) + (asigZ * gkblend))
+  aoutR = ((asigZ * (1-gkblend)) + (asigXY * gkblend))
 endif
 
 outs aoutL, aoutR
 
 endin
-

@@ -1,12 +1,12 @@
 
 -------------------------------------------------
-AVALON - "Morphing Nebulaeum" v1.0, 17-10-2021
+AVALON - "Morphing Nebulaeum" v1.1, 19-10-2021
 -------------------------------------------------
 Inspired by the Morphing Terrarium E350 and the loading of samples from the Cloud Terrarium E352.
-Like the Synthesis Technology E350 Morphing Terrarium, it can morph a wavetable of 64 waves in a 8x8 grid (X and Y) and from wave 1 to 64 (Z).
-However, it is able to read wavetables from the E352. It does not implement all other advanced features of the E352. It also lacks FM.
+Like the Synthesis Technology E350 Morphing Terrarium, it can morph a wavetable bank of 64 waves in a 8x8 grid (X and Y) and from wave 1 to 64 (Z).
+However, it is able to read wavetable banks from the E352. It does not implement all other advanced features of the E352. It also lacks FM.
 
-E352 wavetables can be downloaded here, including the original E350 banks called 'Bank A', 'Bank B' and 'Bank C':
+E352 wavetable banks can be downloaded here, including the original E350 banks called 'Bank A', 'Bank B' and 'Bank C':
 https://waveeditonline.com/index.html
 
 
@@ -14,8 +14,8 @@ https://waveeditonline.com/index.html
 Limitations
 -------------------------------------------------
 - There is no FM like the original instruments. FM needs 'audio rate' frequency modulation, which CSound lacks in the used functions.
-- There are small audio artefacts when pitch changes.
-- Knobs on the Nebulae are a bit 'quantized', it does not have the morph smoothness like the original instruments.
+- There are small audio artefacts when pitch changes. This seems to come from Left and Right output bleeding...
+- Knobs on the Nebulae are a bit 'quantized', it does not have the morph smoothness like the original instruments. Therefor a little slew is added.
 
 
 -------------------------------------------------
@@ -26,27 +26,33 @@ Density:    Y position
 Speed:      Z position (coarse morph)
 Size:       Z position (fine morph)
 Size Alt:   Z position (fine morph range)
+Blend:      Morphing between XY and Z. Different Morh modes available.
 Blend Alt:  Morph Mode
-
+File:       Advances to the next wavetable bank
+Reset:      Resets to the first wavetable bank file, consecutive presses will advance 5 banks, starting from 0
 
 -------------------------------------------------
 Outputs
 -------------------------------------------------
 XY on the Left output
-Z on the Right output (except Morph Mode 5)
+Z on the Right output (except Morph mode 4)
 
 
 -------------------------------------------------
-Morph modes
+Morphing and Morph modes
 -------------------------------------------------
+Blend:
+
 As an addition to the original instrument. AVALON allows for morphing between the XY and Z waves too.
 There are different settings, where XY or Z are unchanged, whereas the other channel morphs between XY and Z.
 
-Full CCW    - 1: Left channel: XY, Right channel Z. Morphs from Z to XY on the Right channel. XYZ at 12 o'clock.
-9 to 10     - 2: Left channel: XY, Right channel Z. Morphs from XY to Z on the Left channel. XYZ at 12 o'clock.
+Blend Alt:
+
+Full CCW    - 1: Left channel: XY, Right channel Z. Morphs from Z  to XY  on the Right channel.                                           XYZ at 12 o'clock.
+9 to 10     - 2: Left channel: XY, Right channel Z. Morphs from XY to Z   on the Left channel.                                            XYZ at 12 o'clock.
 12 o'clock  - 3: Left channel: XY, Right channel Z. Morphs from XY to XYZ on the Left channel. Morphs from Z to XYZ on the Right channel. XYZ at fully CW.
-14 to 15    - 4: Left channel: XY, Right channel Z. Morphs from XY to Z on the Left channel. Morphs from Z to XY on the Right channel. XYZ at 12 o'clock.
-Full CW     - 5: Both channels: XY. Morphs from XY to Z on Both channels. XYZ at 12 o'clock.
+14 to 15    - 4: Both channels: XY.                 Morphs from XY to Z   on Both channels.                                               XYZ at 12 o'clock.
+Full CW     - 5: Left channel: XY, Right channel Z. Morphs from XY to Z   on the Left channel. Morphs from Z to XY on the Right channel.  XYZ at 12 o'clock.
 
 
 -------------------------------------------------
@@ -54,7 +60,7 @@ Z fine morph and morph range
 -------------------------------------------------
 Size:
 
-Morphing through Z (64 wavetables) is not very smooth, as the knob values are a bit 'quantized'.
+Morphing through Z (64 waves) is not very smooth, as the knob values are a bit 'quantized'.
 The Size knob allows fine tuning of the Z morphing. The Size Alt (Shift/Secondary Size) defines the range of this fine tuning as 'an offset' to the Speed knobs Z morph.
 Size at 12 o'clock mean no -/+ of offset.
 
@@ -65,6 +71,13 @@ Full CCW    - 1 wave range, -/+ 0.5 'wave length'.
 12 o'clock  - 4 waves range, -/+ 2.0 'wave length'.
 14 to 15    - 6 waves range, -/+ 3.0 'wave length'.
 Full CW     - 8 waves range, -/+ 4.0 'wave length'. This is equal to the range of X and Y.
+
+
+-------------------------------------------------
+Tips and tricks
+-------------------------------------------------
+
+Morph mode 5 is fun in stereo with modulation of the Blend knob (set to CCW for full modulation, knobs are 'offset' when CV is patched).
 
 
 Have fun!
