@@ -10,7 +10,7 @@ sr,48000
 nebconfigend
 
 /****************
- AVALON - "Morphing Nebulaeum" v1.1, 19-10-2021, inspired by the Morphing Terrarium E350 and the loading of samples from the Cloud Terrarium E352
+ AVALON - "Morphing Nebulaeum" v1.2, 27-10-2021, inspired by the Morphing Terrarium E350 and the loading of samples from the Cloud Terrarium E352
 
  * Overview of controls *
  * Pitch        - Coarse tune     [gkpitch]
@@ -19,23 +19,24 @@ nebconfigend
  * Start        - X               [gkloopstart]
  * Start Alt    - ---             [gkloopstart_alt]
  * Size         - Z fine          [gkloopsize]
- * Size Alt     - Z fine range    [gkloopsize_alt]  ; range of -/+ 'gkloopsize_alt' samples
+ * Size Alt     - Z fine range    [gkloopsize_alt]  ; range of -/+ 1,2,4,6 or 8 samples
  * Density      - Y               [gkdensity]
  * Density Alt  - ---             [gkdensity_alt]
  * Overlap      - ---             [gkoverlap]
  * Overlap Alt  - ---             [gkoverlap_alt]
- * Blend        - XY-Z morph mode [gkblend]         ; range from 1 to 5 (CCW, 9-10, 12, 14-15, CW)
- * Blend Alt    - ---             [gkblend_alt]
+ * Blend        - XY-Z morph      [gkblend]
+ * Blend Alt    - XY-Z morph mode [gkblend_alt]     ; range from 1 to 5 (CCW, 9-10, 12, 14-15, CW)
  * Window       - ---             [gkwindow]
  * Window Alt   - ---             [gkwindow_alt]
  * Record       - ---             [gkrecord]
  * File         - Next bank       [gkfilesel]
  * Source       - ---             [gksource]
- * Reset        - Reset to bank 0 [gkreset]         ; or advance 5 banks of consecutive Reset presses
+ * Reset        - Reset to bank 1 [gkreset]         ; or advance 5 banks of consecutive Reset presses
  * Freeze       - ---             [gkfreeze]
 
  Issues / Fixed / Rework / Enhancement
- #1 : Pressing Reset will return to bank 0 (first bank). Consecutive presses will advance 5 banks. Added in 1.1
+ #1 : Pressing Reset will return to bank 1 (first bank). Consecutive presses will advance 5 banks. Added in v1.1
+ #2 : Code optimization, no fucntional changes. v1.2
 
 ****************/
 
@@ -285,7 +286,7 @@ until kcnt=knumwavesX do
 od
 
 until kcnt=knumwavesZ do
-  kVolZ[kcnt] = 0
+  kVolZ[kcnt] = 0 ; from 8 - 63
   kcnt = kcnt + 1
 od
 
@@ -313,15 +314,18 @@ endif
 
 ; -- set the Z position fine range
 
-if gkloopsize_alt < 0.1 then ;; Fully CCW
+kPosZfineRange_select scale gkloopsize_alt, 5, 1
+kPosZfineRange_select = round(kPosZfineRange_select)
+
+if     kPosZfineRange_select = 1 then ;; Fully CCW
   kPosZfineRange = 1
-elseif gkloopsize_alt < 0.33 then
+elseif kPosZfineRange_select = 2 then
   kPosZfineRange = 2
-elseif gkloopsize_alt < 0.66 then
+elseif kPosZfineRange_select = 3 then
   kPosZfineRange = 4  ; 'half a row width'
-elseif gkloopsize_alt < 0.9 then
+elseif kPosZfineRange_select = 4 then
   kPosZfineRange = 6
-else ;; Fully CW
+elseif kPosZfineRange_select = 5 then ;; Fully CW
   kPosZfineRange = 8  ; 'one row width'
 endif
 
@@ -390,31 +394,30 @@ asigZ = ((asig11 * kVolZ[00]) + (asig21 * kVolZ[01]) + (asig31 * kVolZ[02]) + (a
       +  (asig58 * kVolZ[60]) + (asig68 * kVolZ[61]) + (asig78 * kVolZ[62]) + (asig88 * kVolZ[63])) * 0.76
 
 
-if gkblend_alt < 0.1 then ;; Fully CCW
-  kXYZMorphMode = 1  ;; R channel (Z):  Morph L=XY into R=Z in the middle (middle result, R=XYZ) and then 'unmorph' (end result, R=XY). L channel (XY) is unchanged.
-elseif gkblend_alt < 0.33 then
-  kXYZMorphMode = 2  ;; L channel (XY): Morph R=Z into L=XY in the middle (middle result, L=XYZ) and then 'unmorph' (end result, L=Z). R channel (Z) is unchanged.
-elseif gkblend_alt < 0.66 then
-  kXYZMorphMode = 3  ;; Morph L=XY into R=Z and R=Z into L=XY (result, R=XYZ and L=XYZ)
-elseif gkblend_alt < 0.9 then
-  kXYZMorphMode = 4  ;; Morph L=XY, R=XY into R=Z, L=Z in the middle (middle result, R=XYZ and L=XYZ) and then 'unmorph' (end result, R=Z and L=Z)
-else ;; Fully CW
-  kXYZMorphMode = 5  ;; Morph L=XY into R=Z and R=Z into L=XY in the middle (middle result, R=XYZ and L=XYZ) and then 'unmorph' (end result is swapped, R=Z and L=XY)
-endif
+kloopsize_alt scale gkblend_alt, 5, 1
+kXYZMorphMode = round(kloopsize_alt)
 
-kBlendFact scale gkblend, 0.8, 1
+;printks2 "kXYZMorphMode %f\n", kXYZMorphMode
+
+; kXYZMorphMode = 1 CCW ;; R channel (Z):  Morph L=XY into R=Z  (middle result, R=XYZ) and then 'unmorph' (end result, R=XY). L channel (XY) is unchanged.
+; kXYZMorphMode = 2     ;; L channel (XY): Morph R=Z  into L=XY (middle result, L=XYZ) and then 'unmorph' (end result, L=Z).  R channel (Z)  is unchanged.
+; kXYZMorphMode = 3 CEN ;; Morph L=XY into R=Z and R=Z into L=XY (end result, R=XYZ and L=XYZ)
+; kXYZMorphMode = 4     ;; Morph L=XY, R=XY into R=Z, L=Z in the middle (middle result, R=XYZ and L=XYZ) and then 'unmorph' (end result, R=Z and L=Z)
+; kXYZMorphMode = 5 CW  ;; Morph L=XY into R=Z and R=Z into L=XY in the middle (middle result, R=XYZ and L=XYZ) and then 'unmorph' (end result is swapped, R=Z and L=XY)
+
+kBlend_factor scale gkblend, 0.8, 1
 
 if kXYZMorphMode = 1 then
   aoutL = asigXY
-;  aoutR = (asigZ + (asigXY * gkblend)) * kBlendFact  ;   CW = XYZ
+;  aoutR = (asigZ + (asigXY * gkblend)) * kBlend_factor  ;   CW = XYZ
   aoutR = ((asigZ * (1-gkblend)) + (asigXY * gkblend))
 elseif kXYZMorphMode = 2 then
-;  aoutL = (asigXY + (asigZ * gkblend)) * kBlendFact  ;   CW = XYZ
+;  aoutL = (asigXY + (asigZ * gkblend)) * kBlend_factor  ;   CW = XYZ
   aoutL = ((asigXY * (1-gkblend)) + (asigZ * gkblend))
   aoutR = asigZ
 elseif kXYZMorphMode = 3 then
-  aoutL = (asigXY + (asigZ * gkblend)) * kBlendFact
-  aoutR = (asigZ + (asigXY * gkblend)) * kBlendFact
+  aoutL = (asigXY + (asigZ * gkblend)) * kBlend_factor
+  aoutR = (asigZ + (asigXY * gkblend)) * kBlend_factor
 elseif kXYZMorphMode = 4 then
   aoutL = ((asigXY * (1-gkblend)) + (asigZ * gkblend))
   aoutR = ((asigXY * (1-gkblend)) + (asigZ * gkblend))

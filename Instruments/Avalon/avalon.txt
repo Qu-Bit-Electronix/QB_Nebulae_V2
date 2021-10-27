@@ -1,6 +1,6 @@
 
 -------------------------------------------------
-AVALON - "Morphing Nebulaeum" v1.1, 19-10-2021
+AVALON - "Morphing Nebulaeum" v1.2, 27-10-2021
 -------------------------------------------------
 Inspired by the Morphing Terrarium E350 and the loading of samples from the Cloud Terrarium E352.
 Like the Synthesis Technology E350 Morphing Terrarium, it can morph a wavetable bank of 64 waves in a 8x8 grid (X and Y) and from wave 1 to 64 (Z).
@@ -28,14 +28,16 @@ Size:       Z position (fine morph)
 Size Alt:   Z position (fine morph range)
 Blend:      Morphing between XY and Z. Different Morh modes available.
 Blend Alt:  Morph Mode
-File:       Advances to the next wavetable bank
-Reset:      Resets to the first wavetable bank file, consecutive presses will advance 5 banks, starting from 0
+File:       Advances to the next wavetable bank file.
+Reset:      Resets to the first wavetable bank file, consecutive presses will advance 5 banks, starting from 0.
 
 -------------------------------------------------
 Outputs
 -------------------------------------------------
-XY on the Left output
-Z on the Right output (except Morph mode 4)
+When Blend is Fully CCW:
+
+XY on the Left output.
+Z on the Right output. Except Morph mode 4, which starts both Left and Right as XY).
 
 
 -------------------------------------------------
@@ -77,7 +79,7 @@ Full CW     - 8 waves range, -/+ 4.0 'wave length'. This is equal to the range o
 Tips and tricks
 -------------------------------------------------
 
-Morph mode 5 is fun in stereo with modulation of the Blend knob (set to CCW for full modulation, knobs are 'offset' when CV is patched).
+Morph mode 4 and 5 are fun in stereo with modulation of the Blend knob (set to CCW for full modulation, knobs are 'offset' when CV is patched).
 
 
 Have fun!
