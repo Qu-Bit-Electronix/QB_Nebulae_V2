@@ -36,13 +36,15 @@ nebconfigend
 
  Issues / Fixed / Rework / Enhancement
  #1 : Pressing Reset will return to bank 1 (first bank). Consecutive presses will advance 5 banks. Added in v1.1
- #2 : Code optimization, no fucntional changes. v1.2
+ #2 : Code optimization, no functional changes. v1.2
+ #3 : Complete rewrite of morphing technique and oscillator type, to eliminate pitch artefacts. v1.3
 
 ****************/
 
 instr 1
 
 ; === INITIALIZATION
+; =========================
 
 kInit init 1
 if kInit == 1 then
@@ -54,12 +56,20 @@ if kInit == 1 then
   knumwavesY = 8
   knumwavesZ = 64
 
-  ; Volume arrays. Only 16 are needed for X and Y, 64 for Z
-  kVolX[] init 8
-  kVolY[] init 8
-  kVolZ[] init 64
+  ; empty tables
+  iTabY1 ftgen 600, 0, 256, -2, 0
+  iTabY2 ftgen 601, 0, 256, -2, 0
+  iTabY3 ftgen 602, 0, 256, -2, 0
+  iTabY4 ftgen 603, 0, 256, -2, 0
+  iTabY5 ftgen 604, 0, 256, -2, 0
+  iTabY6 ftgen 605, 0, 256, -2, 0
+  iTabY7 ftgen 606, 0, 256, -2, 0
+  iTabY8 ftgen 607, 0, 256, -2, 0
+  iTabXY ftgen 608, 0, 768, -2, 0
+  iTabZ  ftgen 609, 0, 768, -2, 0
 
   ; Nebulae V2 loaded files will start at table 400, 399 + 'gkfilesel' starts at 400.
+  kBank = 400
   gkfilesel_offset = 399
 
   ; On every 'File press', 'gkfilesel' is set to the internal 'Current file index'.
@@ -71,12 +81,22 @@ if kInit == 1 then
     kreset = 1
   endif
 
+  ; Defince C in Hz
+  kC4 = 261.625565
+  kC3 = kC4 / 2
+  kC2 = kC4 / 4
+  kBaseC = kC3
+
+  ; Amplitude can by (too) hight sometimes, make it 0.8
+  kAmp = 0.8
+
   ; 'init' is over
   kInit = 0
 endif
 
 
-;; BANK SELECT
+; BANK SELECT
+; =========================
 
 ; Detect Reset
 kresettrig trigger gkreset, 0.5, 0
@@ -106,214 +126,83 @@ if kfilesel > ginumfiles - 1 then
 endif
 
 ; gkfilesel - index of table containing audio file data. 'gkfilesel' is updated (and rotated) on 'File' press.
-kbank = gkfilesel_offset + kfilesel + 1
+kBank = gkfilesel_offset + kfilesel + 1
 
 
-;; PITCH FACTOR
+; PITCH FACTOR
+; =========================
 
 kpitch_scale scale gkpitch, 2, -3
 kpitch_fine = kpitch_scale * (1 + ((gkpitch_alt - 0.5) / 10))
 
 kpitch pow 2, kpitch_fine
-kpitch = kpitch * (130.8128 / ( sr / 256 ))  ;  Compensate for pitch, to have 0v = C3 = 130.8128 Hz
+kpitch_factor = kpitch * (kBaseC / ( sr / 256 ))  ;  Compensate for pitch, to have 0v = C3 = 130.8128 Hz
 
 
-;; === LOOPING PHASOR POINTS AND ASSIGN TO TABLE
-;; use phasor and tablekt, with only 'loscil', you can not set a start point of the sample, so it will start always at 0 and then loops from 512 to 768
+; === MORPHING
+; =========================
 
-;; param 1 = pitch, 1 = 1x as fast, 2 = 2x as fast (1 oct up), 4 = 4x as fast (2 oct up)
-;; param 2 = start loop point
-;; param 3 = end loop point (not including 'last' point... (tested with square after sine (point 255 = 0, point 256 = 1)))
-;; param 4 = '1' = forward loop
-;; param 5 = point to start playback
-
-alph11 lphasor kpitch, 00000, 00256, 1, 00000
-alph21 lphasor kpitch, 00256, 00512, 1, 00256
-alph31 lphasor kpitch, 00512, 00768, 1, 00512
-alph41 lphasor kpitch, 00768, 01024, 1, 00768
-alph51 lphasor kpitch, 01024, 01280, 1, 01024
-alph61 lphasor kpitch, 01280, 01536, 1, 01280
-alph71 lphasor kpitch, 01536, 01792, 1, 01536
-alph81 lphasor kpitch, 01792, 02048, 1, 01792
-
-alph12 lphasor kpitch, 02048, 02304, 1, 02048
-alph22 lphasor kpitch, 02304, 02560, 1, 02304
-alph32 lphasor kpitch, 02560, 02816, 1, 02560
-alph42 lphasor kpitch, 02816, 03072, 1, 02816
-alph52 lphasor kpitch, 03072, 03328, 1, 03072
-alph62 lphasor kpitch, 03328, 03584, 1, 03328
-alph72 lphasor kpitch, 03584, 03840, 1, 03584
-alph82 lphasor kpitch, 03840, 04096, 1, 03840
-
-alph13 lphasor kpitch, 04096, 04352, 1, 04096
-alph23 lphasor kpitch, 04352, 04608, 1, 04352
-alph33 lphasor kpitch, 04608, 04864, 1, 04608
-alph43 lphasor kpitch, 04864, 05120, 1, 04864
-alph53 lphasor kpitch, 05120, 05376, 1, 05120
-alph63 lphasor kpitch, 05376, 05632, 1, 05376
-alph73 lphasor kpitch, 05632, 05888, 1, 05632
-alph83 lphasor kpitch, 05888, 06144, 1, 05888
-
-alph14 lphasor kpitch, 06144, 06400, 1, 06144
-alph24 lphasor kpitch, 06400, 06656, 1, 06400
-alph34 lphasor kpitch, 06656, 06912, 1, 06656
-alph44 lphasor kpitch, 06912, 07168, 1, 06912
-alph54 lphasor kpitch, 07168, 07424, 1, 07168
-alph64 lphasor kpitch, 07424, 07680, 1, 07424
-alph74 lphasor kpitch, 07680, 07936, 1, 07680
-alph84 lphasor kpitch, 07936, 08192, 1, 07936
-
-alph15 lphasor kpitch, 08192, 08448, 1, 08192
-alph25 lphasor kpitch, 08448, 08704, 1, 08448
-alph35 lphasor kpitch, 08704, 08960, 1, 08704
-alph45 lphasor kpitch, 08960, 09216, 1, 08960
-alph55 lphasor kpitch, 09216, 09472, 1, 09216
-alph65 lphasor kpitch, 09472, 09728, 1, 09472
-alph75 lphasor kpitch, 09728, 09984, 1, 09728
-alph85 lphasor kpitch, 09984, 10240, 1, 09984
-
-alph16 lphasor kpitch, 10240, 10496, 1, 10240
-alph26 lphasor kpitch, 10496, 10752, 1, 10496
-alph36 lphasor kpitch, 10752, 11008, 1, 10752
-alph46 lphasor kpitch, 11008, 11264, 1, 11008
-alph56 lphasor kpitch, 11264, 11520, 1, 11264
-alph66 lphasor kpitch, 11520, 11776, 1, 11520
-alph76 lphasor kpitch, 11776, 12032, 1, 11776
-alph86 lphasor kpitch, 12032, 12288, 1, 12032
-
-alph17 lphasor kpitch, 12288, 12544, 1, 12288
-alph27 lphasor kpitch, 12544, 12800, 1, 12544
-alph37 lphasor kpitch, 12800, 13056, 1, 12800
-alph47 lphasor kpitch, 13056, 13312, 1, 13056
-alph57 lphasor kpitch, 13312, 13568, 1, 13312
-alph67 lphasor kpitch, 13568, 13824, 1, 13568
-alph77 lphasor kpitch, 13824, 14080, 1, 13824
-alph87 lphasor kpitch, 14080, 14336, 1, 14080
-
-alph18 lphasor kpitch, 14336, 14592, 1, 14336
-alph28 lphasor kpitch, 14592, 14848, 1, 14592
-alph38 lphasor kpitch, 14848, 15104, 1, 14848
-alph48 lphasor kpitch, 15104, 15360, 1, 15104
-alph58 lphasor kpitch, 15360, 15616, 1, 15360
-alph68 lphasor kpitch, 15616, 15872, 1, 15616
-alph78 lphasor kpitch, 15872, 16128, 1, 15872
-alph88 lphasor kpitch, 16128, 16384, 1, 16128
-
-; -- table assign
-
-asig11 tablekt alph11, kbank
-asig21 tablekt alph21, kbank
-asig31 tablekt alph31, kbank
-asig41 tablekt alph41, kbank
-asig51 tablekt alph51, kbank
-asig61 tablekt alph61, kbank
-asig71 tablekt alph71, kbank
-asig81 tablekt alph81, kbank
-              
-asig12 tablekt alph12, kbank
-asig22 tablekt alph22, kbank
-asig32 tablekt alph32, kbank
-asig42 tablekt alph42, kbank
-asig52 tablekt alph52, kbank
-asig62 tablekt alph62, kbank
-asig72 tablekt alph72, kbank
-asig82 tablekt alph82, kbank
-              
-asig13 tablekt alph13, kbank
-asig23 tablekt alph23, kbank
-asig33 tablekt alph33, kbank
-asig43 tablekt alph43, kbank
-asig53 tablekt alph53, kbank
-asig63 tablekt alph63, kbank
-asig73 tablekt alph73, kbank
-asig83 tablekt alph83, kbank
-              
-asig14 tablekt alph14, kbank
-asig24 tablekt alph24, kbank
-asig34 tablekt alph34, kbank
-asig44 tablekt alph44, kbank
-asig54 tablekt alph54, kbank
-asig64 tablekt alph64, kbank
-asig74 tablekt alph74, kbank
-asig84 tablekt alph84, kbank
-              
-asig15 tablekt alph15, kbank
-asig25 tablekt alph25, kbank
-asig35 tablekt alph35, kbank
-asig45 tablekt alph45, kbank
-asig55 tablekt alph55, kbank
-asig65 tablekt alph65, kbank
-asig75 tablekt alph75, kbank
-asig85 tablekt alph85, kbank
-              
-asig16 tablekt alph16, kbank
-asig26 tablekt alph26, kbank
-asig36 tablekt alph36, kbank
-asig46 tablekt alph46, kbank
-asig56 tablekt alph56, kbank
-asig66 tablekt alph66, kbank
-asig76 tablekt alph76, kbank
-asig86 tablekt alph86, kbank
-              
-asig17 tablekt alph17, kbank
-asig27 tablekt alph27, kbank
-asig37 tablekt alph37, kbank
-asig47 tablekt alph47, kbank
-asig57 tablekt alph57, kbank
-asig67 tablekt alph67, kbank
-asig77 tablekt alph77, kbank
-asig87 tablekt alph87, kbank
-              
-asig18 tablekt alph18, kbank
-asig28 tablekt alph28, kbank
-asig38 tablekt alph38, kbank
-asig48 tablekt alph48, kbank
-asig58 tablekt alph58, kbank
-asig68 tablekt alph68, kbank
-asig78 tablekt alph78, kbank
-asig88 tablekt alph88, kbank
-
-;; === VOLUMES
-
-; -- reset the volumes
-
-kcnt = 0
-until kcnt=knumwavesX do
-  kVolX[kcnt] = 0
-  kVolY[kcnt] = 0 ; combine Y
-  kVolZ[kcnt] = 0 ; combine Z 0-7
-  kcnt = kcnt + 1
-od
-
-until kcnt=knumwavesZ do
-  kVolZ[kcnt] = 0 ; from 8 - 63
-  kcnt = kcnt + 1
-od
-
-; -- calculate the volumes
-
-; X volumes
-kPosX portk (gkloopstart * (knumwavesX - 1)), 0.03
-
-kIndexX = int(kPosX)
-kVolX[kIndexX+0] = (kIndexX + 1) - kPosX
-if (kIndexX < knumwavesX - 1) then
-  kVolX[kIndexX+1] = 1 - ((kIndexX + 1) - kPosX)
-endif
-
-; Y volumes
-kPosY portk (gkdensity * (knumwavesY - 1)), 0.03
+; Y Morphing
+kPosY portk (gkloopstart * (knumwavesY - 1)), 0.02
 
 kIndexY = int(kPosY)
-kVolY[kIndexY+0] = (kIndexY + 1) - kPosY
-if (kIndexY < knumwavesY - 1) then
-  kVolY[kIndexY+1] = 1 - ((kIndexY + 1) - kPosY)
-endif
 
-; Z volumes
+kIndexY1 = round((kIndexY / 2) + 0.000001) * 2
+kIndexY1 = (kIndexY1 > (knumwavesY - 1) ? 0 : kIndexY1)
+kIndexY2 = (round(((kIndexY + 1) / 2) + 0.000001) * 2) - 1
+
+kVolY2 = ((kPosY % 2) < 1 ? (kPosY % 2) : 1 - ((kPosY % 2) - 1))
+kVolY1 = 1 - kVolY2
+
+;;  -- samples starting points, length 256 each
+;;  7 14336 14592 14848 15104 15360 15616 15872 16128
+;;  6 12288 12544 12800 13056 13312 13568 13824 14080
+;;  5 10240 10496 10752 11008 11264 11520 11776 12032
+;;  4  8192  8448  8704  8960  9216  9472  9728  9984
+;;  3  6144  6400  6656  6912  7168  7424  7680  7936
+;;  2  4096  4352  4608  4864  5120  5376  5632  5888
+;;  1  2048  2304  2560  2816  3072  3328  3584  3840
+;;  0     0   256   512   768  1024  1280  1536  1792
+;;  Y X > 0     1     2     3     4     5     6     7
+
+; 8 tables, 1 for each 'Y-row'
+; tablemix DEST_TABLE, START_INDEX, #POINTS_TO_COPY
+tablemix iTabY1, 0, 256, kBank, (kIndexY1 * 256) + 00000, kVolY1, kBank, ((kIndexY2) * 256) + 00000, kVolY2
+tablemix iTabY2, 0, 256, kBank, (kIndexY1 * 256) + 02048, kVolY1, kBank, ((kIndexY2) * 256) + 02048, kVolY2
+tablemix iTabY3, 0, 256, kBank, (kIndexY1 * 256) + 04096, kVolY1, kBank, ((kIndexY2) * 256) + 04096, kVolY2
+tablemix iTabY4, 0, 256, kBank, (kIndexY1 * 256) + 06144, kVolY1, kBank, ((kIndexY2) * 256) + 06144, kVolY2
+tablemix iTabY5, 0, 256, kBank, (kIndexY1 * 256) + 08192, kVolY1, kBank, ((kIndexY2) * 256) + 08192, kVolY2
+tablemix iTabY6, 0, 256, kBank, (kIndexY1 * 256) + 10240, kVolY1, kBank, ((kIndexY2) * 256) + 10240, kVolY2
+tablemix iTabY7, 0, 256, kBank, (kIndexY1 * 256) + 12288, kVolY1, kBank, ((kIndexY2) * 256) + 12288, kVolY2
+tablemix iTabY8, 0, 256, kBank, (kIndexY1 * 256) + 14336, kVolY1, kBank, ((kIndexY2) * 256) + 14336, kVolY2
+
+
+; X Morphing
+; =========================
+
+kPosX portk (gkdensity * (knumwavesY - 1)), 0.02
+
+kIndexX = int(kPosX)
+
+kIndexX1 = round((kIndexX / 2) + 0.000001) * 2
+kIndexX1 = (kIndexX1 > (knumwavesX - 1) ? 0 : kIndexX1)
+kIndexX2 = (round(((kIndexX + 1) / 2) + 0.000001) * 2) - 1
+
+kVolX2 = ((kPosX % 2) < 1 ? (kPosX % 2) : 1 - ((kPosX % 2) - 1))
+kVolX1 = 1 - kVolX2
+
+; now mix the right 'Y-row' into XY
+; The linear interpolation needs preceding and appending waveforms, to overcome artifacts when the does not start 'at zero'.
+; The most easiest process is to add the same wave before and after the wave that will be played.
+tablemix iTabXY, 000, 256, 600 + kIndexX1, 0, kVolX1, 600 + kIndexX2, 0, kVolX2
+tablemix iTabXY, 256, 256, 600 + kIndexX1, 0, kVolX1, 600 + kIndexX2, 0, kVolX2
+tablemix iTabXY, 512, 256, 600 + kIndexX1, 0, kVolX1, 600 + kIndexX2, 0, kVolX2
+
+
+; Z Morphing
+; =========================
 
 ; -- set the Z position fine range
-
 kPosZfineRange_select scale gkloopsize_alt, 5, 1
 kPosZfineRange_select = round(kPosZfineRange_select)
 
@@ -330,72 +219,52 @@ elseif kPosZfineRange_select = 5 then ;; Fully CW
 endif
 
 kPosZfine = ((gkloopsize * kPosZfineRange) - (kPosZfineRange / 2))
-kPosZ portk (gkspeed * (knumwavesZ - 1) + kPosZfine), 0.03
+kPosZ portk (gkspeed * (knumwavesZ - 1) + kPosZfine), 0.02
+kPosZ limit kPosZ, 0, (knumwavesZ - 1)
 
-kPosZ limit kPosZ, 0, 63
+kIndexZ = int(kPosZ)
 
-kIndexZ = int(kPosZ + 0.000001)
-kVolZ[kIndexZ+0] = (kIndexZ + 1) - kPosZ
-if (kIndexZ < knumwavesZ - 1) then
-  kVolZ[kIndexZ+1] = 1 - ((kIndexZ + 1) - kPosZ)
+kIndexZ1 = round((kIndexZ / 2) + 0.000001) * 2
+kIndexZ1 = (kIndexZ1 > 63 ? 0 : kIndexZ1)
+kIndexZ2 = (round(((kIndexZ + 1) / 2) + 0.000001) * 2) - 1
+
+kvolZ2 = (((kPosZ % 2)) < 1 ? ((kPosZ % 2)) : 1 - (((kPosZ % 2)) - 1))
+kvolZ1 = 1 - kvolZ2
+
+;printks2 "kvolZ1 %f\n", kvolZ1
+;printks2 "kvolZ2 %f\n", kvolZ2
+
+; The linear interpolation needs preceding and appending waveforms, to overcome artifacts when the does not start 'at zero'.
+; The most easiest process is to add the same wave before and after the wave that will be played.
+tablemix iTabZ, 000, 256, kBank, (kIndexZ1 * 256), kvolZ1, kBank, (kIndexZ2 * 256), kvolZ2
+tablemix iTabZ, 256, 256, kBank, (kIndexZ1 * 256), kvolZ1, kBank, (kIndexZ2 * 256), kvolZ2
+tablemix iTabZ, 512, 256, kBank, (kIndexZ1 * 256), kvolZ1, kBank, (kIndexZ2 * 256), kvolZ2
+
+kwindow scale gkwindow, 2, 1
+kOscType = round(kwindow)
+printks2 "kOscType %f\n", kOscType
+
+if kOscType = 1 then
+  asigZ  lposcil kAmp, kpitch_factor, 256, 512, iTabZ
+  asigXY lposcil kAmp, kpitch_factor, 256, 512, iTabXY
+elseif kOscType = 2 then
+  ; alternative 'cubic interpolation' oscillator
+  asigZ  lposcil3 kAmp, kpitch_factor, 256, 512, iTabZ
+  asigXY lposcil3 kAmp, kpitch_factor, 256, 512, iTabXY
 endif
 
-;printks2 "kVolZ[63] %f\n", kVolZ[63]
-
-; Each Y-row will have 1 or 2 X's (samples) which will generate sound
-
-asigY1 = ((asig11 * kVolX[0]) + (asig21 * kVolX[1]) + (asig31 * kVolX[2]) + (asig41 * kVolX[3]) \
-       +  (asig51 * kVolX[4]) + (asig61 * kVolX[5]) + (asig71 * kVolX[6]) + (asig81 * kVolX[7])) * 0.8
-
-asigY2 = ((asig12 * kVolX[0]) + (asig22 * kVolX[1]) + (asig32 * kVolX[2]) + (asig42 * kVolX[3]) \
-       +  (asig52 * kVolX[4]) + (asig62 * kVolX[5]) + (asig72 * kVolX[6]) + (asig82 * kVolX[7])) * 0.8
-
-asigY3 = ((asig13 * kVolX[0]) + (asig23 * kVolX[1]) + (asig33 * kVolX[2]) + (asig43 * kVolX[3]) \
-       +  (asig53 * kVolX[4]) + (asig63 * kVolX[5]) + (asig73 * kVolX[6]) + (asig83 * kVolX[7])) * 0.8
-
-asigY4 = ((asig14 * kVolX[0]) + (asig24 * kVolX[1]) + (asig34 * kVolX[2]) + (asig44 * kVolX[3]) \
-       +  (asig54 * kVolX[4]) + (asig64 * kVolX[5]) + (asig74 * kVolX[6]) + (asig84 * kVolX[7])) * 0.8
-
-asigY5 = ((asig15 * kVolX[0]) + (asig25 * kVolX[1]) + (asig35 * kVolX[2]) + (asig45 * kVolX[3]) \
-       +  (asig55 * kVolX[4]) + (asig65 * kVolX[5]) + (asig75 * kVolX[6]) + (asig85 * kVolX[7])) * 0.8
-
-asigY6 = ((asig16 * kVolX[0]) + (asig26 * kVolX[1]) + (asig36 * kVolX[2]) + (asig46 * kVolX[3]) \
-       +  (asig56 * kVolX[4]) + (asig66 * kVolX[5]) + (asig76 * kVolX[6]) + (asig86 * kVolX[7])) * 0.8
-
-asigY7 = ((asig17 * kVolX[0]) + (asig27 * kVolX[1]) + (asig37 * kVolX[2]) + (asig47 * kVolX[3]) \
-       +  (asig57 * kVolX[4]) + (asig67 * kVolX[5]) + (asig77 * kVolX[6]) + (asig87 * kVolX[7])) * 0.8
-
-asigY8 = ((asig18 * kVolX[0]) + (asig28 * kVolX[1]) + (asig38 * kVolX[2]) + (asig48 * kVolX[3]) \
-       +  (asig58 * kVolX[4]) + (asig68 * kVolX[5]) + (asig78 * kVolX[6]) + (asig88 * kVolX[7])) * 0.8
+; earlier oscillator types, but has artifacts
+;  asigZ oscil kAmp, kBaseC * kpitch, iTabZ
+;  asigZ poscil kAmp, kBaseC * kpitch, iTabZ, 1
+;  asigZ oscili kAmp, kBaseC * kpitch, iTabZ
+;  asigZ oscil3 kAmp, kBaseC * kpitch, iTabZ
 
 
-; Now make only 1 or 2 Y-rows be audible. The audible sound will be the 'dialed in' X and Y coordinates
+; MORPH MODES
+; =========================
 
-asigXY = ((asigY1 * kVolY[0]) + (asigY2 * kVolY[1]) + (asigY3 * kVolY[2]) + (asigY4 * kVolY[3]) \
-       +  (asigY5 * kVolY[4]) + (asigY6 * kVolY[5]) + (asigY7 * kVolY[6]) + (asigY8 * kVolY[7])) * 0.8
-
-; Make the Z sound. Only 1 or 2 samples will generate sound
-
-asigZ = ((asig11 * kVolZ[00]) + (asig21 * kVolZ[01]) + (asig31 * kVolZ[02]) + (asig41 * kVolZ[03]) \
-      +  (asig51 * kVolZ[04]) + (asig61 * kVolZ[05]) + (asig71 * kVolZ[06]) + (asig81 * kVolZ[07]) \
-      +  (asig12 * kVolZ[08]) + (asig22 * kVolZ[09]) + (asig32 * kVolZ[10]) + (asig42 * kVolZ[11]) \
-      +  (asig52 * kVolZ[12]) + (asig62 * kVolZ[13]) + (asig72 * kVolZ[14]) + (asig82 * kVolZ[15]) \
-      +  (asig13 * kVolZ[16]) + (asig23 * kVolZ[17]) + (asig33 * kVolZ[18]) + (asig43 * kVolZ[19]) \
-      +  (asig53 * kVolZ[20]) + (asig63 * kVolZ[21]) + (asig73 * kVolZ[22]) + (asig83 * kVolZ[23]) \
-      +  (asig14 * kVolZ[24]) + (asig24 * kVolZ[25]) + (asig34 * kVolZ[26]) + (asig44 * kVolZ[27]) \
-      +  (asig54 * kVolZ[28]) + (asig64 * kVolZ[29]) + (asig74 * kVolZ[30]) + (asig84 * kVolZ[31]) \
-      +  (asig15 * kVolZ[32]) + (asig25 * kVolZ[33]) + (asig35 * kVolZ[34]) + (asig45 * kVolZ[35]) \
-      +  (asig55 * kVolZ[36]) + (asig65 * kVolZ[37]) + (asig75 * kVolZ[38]) + (asig85 * kVolZ[39]) \
-      +  (asig16 * kVolZ[40]) + (asig26 * kVolZ[41]) + (asig36 * kVolZ[42]) + (asig46 * kVolZ[43]) \
-      +  (asig56 * kVolZ[44]) + (asig66 * kVolZ[45]) + (asig76 * kVolZ[46]) + (asig86 * kVolZ[47]) \
-      +  (asig17 * kVolZ[48]) + (asig27 * kVolZ[49]) + (asig37 * kVolZ[50]) + (asig47 * kVolZ[51]) \
-      +  (asig57 * kVolZ[52]) + (asig67 * kVolZ[53]) + (asig77 * kVolZ[54]) + (asig87 * kVolZ[55]) \
-      +  (asig18 * kVolZ[56]) + (asig28 * kVolZ[57]) + (asig38 * kVolZ[58]) + (asig48 * kVolZ[59]) \
-      +  (asig58 * kVolZ[60]) + (asig68 * kVolZ[61]) + (asig78 * kVolZ[62]) + (asig88 * kVolZ[63])) * 0.76
-
-
-kloopsize_alt scale gkblend_alt, 5, 1
-kXYZMorphMode = round(kloopsize_alt)
+kblend_alt scale gkblend_alt, 5, 1
+kXYZMorphMode = round(kblend_alt)
 
 ;printks2 "kXYZMorphMode %f\n", kXYZMorphMode
 
@@ -405,25 +274,26 @@ kXYZMorphMode = round(kloopsize_alt)
 ; kXYZMorphMode = 4     ;; Morph L=XY, R=XY into R=Z, L=Z in the middle (middle result, R=XYZ and L=XYZ) and then 'unmorph' (end result, R=Z and L=Z)
 ; kXYZMorphMode = 5 CW  ;; Morph L=XY into R=Z and R=Z into L=XY in the middle (middle result, R=XYZ and L=XYZ) and then 'unmorph' (end result is swapped, R=Z and L=XY)
 
-kBlend_factor scale gkblend, 0.8, 1
+kblend portk gkblend, 0.01
+kBlend_factor scale kblend, 0.8, 1
 
 if kXYZMorphMode = 1 then
   aoutL = asigXY
-;  aoutR = (asigZ + (asigXY * gkblend)) * kBlend_factor  ;   CW = XYZ
-  aoutR = ((asigZ * (1-gkblend)) + (asigXY * gkblend))
+;  aoutR = (asigZ + (asigXY * kblend)) * kBlend_factor  ;   CW = XYZ
+  aoutR = ((asigZ * (1-kblend)) + (asigXY * kblend))
 elseif kXYZMorphMode = 2 then
-;  aoutL = (asigXY + (asigZ * gkblend)) * kBlend_factor  ;   CW = XYZ
-  aoutL = ((asigXY * (1-gkblend)) + (asigZ * gkblend))
+;  aoutL = (asigXY + (asigZ * kblend)) * kBlend_factor  ;   CW = XYZ
+  aoutL = ((asigXY * (1-kblend)) + (asigZ * kblend))
   aoutR = asigZ
 elseif kXYZMorphMode = 3 then
-  aoutL = (asigXY + (asigZ * gkblend)) * kBlend_factor
-  aoutR = (asigZ + (asigXY * gkblend)) * kBlend_factor
+  aoutL = (asigXY + (asigZ * kblend)) * kBlend_factor
+  aoutR = (asigZ + (asigXY * kblend)) * kBlend_factor
 elseif kXYZMorphMode = 4 then
-  aoutL = ((asigXY * (1-gkblend)) + (asigZ * gkblend))
-  aoutR = ((asigXY * (1-gkblend)) + (asigZ * gkblend))
+  aoutL = ((asigXY * (1-kblend)) + (asigZ * kblend))
+  aoutR = ((asigXY * (1-kblend)) + (asigZ * kblend))
 else ;; kXYZMorphMode = 5
-  aoutL = ((asigXY * (1-gkblend)) + (asigZ * gkblend))
-  aoutR = ((asigZ * (1-gkblend)) + (asigXY * gkblend))
+  aoutL = ((asigXY * (1-kblend)) + (asigZ * kblend))
+  aoutR = ((asigZ * (1-kblend)) + (asigXY * kblend))
 endif
 
 outs aoutL, aoutR
