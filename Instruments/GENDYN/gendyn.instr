@@ -67,49 +67,49 @@ instr 1
   ; (2)Choice of distribution for the perturbation
   ;  of the current inter control point duration.
   ;
-  gkSelect scale gkwindow, 0, 5
+  gkSelect scale gkwindow, 5, 0
   gkSelect port gkSelect, 0.06
 
   ; ~ gkAdPar ~
   ;kadpar [Loop Start]
   ;	- Parameter for the kampdist distribution
   ;
-  gkAdPar scale gkloopstart, 0.001, 1
+  gkAdPar scale gkloopstart, 1, 0.001
   gkAdPar port gkAdPar, 0.06
 
   ; ~ gkDdPar ~
   ;kddpar [Loop Size]
   ;	- Parameter for the kdurdist distribution
   ;
-  gkDdPar scale gkloopsize, 0.001, 1
+  gkDdPar scale gkloopsize, 1, 0.001
   gkDdPar port gkDdPar, 0.06
 
   ; ~ gkMaxFreq ~
   ;kminfreq [Speed]
   ;	- Minimum allowed frequency of oscillation
   ;
-  gkMaxFreq scale gkspeed, 13, 880
+  gkMaxFreq scale gkspeed, 880, 13
   gkMaxFreq port gkMaxFreq, 0.06
 
   ; ~ gkMinFreq ~
   ;kminfreq [Pitch]
   ;	- Maximum allowed frequency of oscillation
   ;
-  gkMinFreq scale gkpitch, 13, 880
+  gkMinFreq scale gkpitch, 880, 13
   gkMinFreq port gkMinFreq, 0.06
 
   ; ~ gkAmpScl ~
   ;kampscl [Grain Rate]
   ;	- multiplier for the distribution's delta value for amplitude
   ;
-  gkAmpScl scale gkdensity, 0.01, 1
+  gkAmpScl scale gkdensity, 1, 0.01
   gkAmpScl port gkAmpScl, 0.06
 
   ; ~ gkDurScl ~
   ;kdurscl [Grain Size]
   ;	- multiplier for the distribution's delta value for duration
   ;
-  gkDurScl scale gkoverlap, 0.01, 1
+  gkDurScl scale gkoverlap, 1, 0.01
   gkDurScl port gkDurScl, 0.06
 
   ; ~ gkNum ~
@@ -121,7 +121,7 @@ instr 1
   ;		to a stochastic action and they are limited within the boundaries
   ;		of a mirror formed by an amplitude barrier and a time barrier.
   ;
-  gkNum scale gkblend, 1, 20
+  gkNum scale gkblend, 20, 1
   gkNum port gkNum, 0.06
 
   ;ares 		gendy 	kamp, kampdist, kdurdist, kadpar, kddpar, kminfreq, kmaxfreq, \

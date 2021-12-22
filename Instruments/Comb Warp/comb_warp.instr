@@ -48,21 +48,21 @@ instr 1
 
 ; [Nebulae Controls]
 
-  kENVstretch scale gkspeed, 0.001, 5       ; ~ ENV Stretch ~     [Speed]
+  kENVstretch scale gkspeed, 5, 0.001       ; ~ ENV Stretch ~     [Speed]
   kENVstretch portk kENVstretch, 0.08
-  kCutoff     scale gkpitch, 0.001, 4000    ; ~ Cutoff ~       [Pitch]
+  kCutoff     scale gkpitch, 4000, 0.001    ; ~ Cutoff ~       [Pitch]
   kCutoff     portk kCutoff, 0.08
-  kResonance  scale gkwindow, 0.001, .7     ; ~ Resonance ~     [Glide]
+  kResonance  scale gkwindow, .7, 0.001     ; ~ Resonance ~     [Glide]
   kResonance  portk kResonance, 0.08
-  kVerbMix    scale gkblend, 0.001, 1       ; ~ CombReverb ~     [Mix]
+  kVerbMix    scale gkblend, 1, 0.001       ; ~ CombReverb ~     [Mix]
   kVerbMix    portk kVerbMix, 0.08
-  kFrequency  scale gkloopstart, 0.001, 880 ; ~ Frequency ~     [Loop Start]
+  kFrequency  scale gkloopstart, 880, 0.001 ; ~ Frequency ~     [Loop Start]
   kFrequency  portk kFrequency, 0.08
-  kBnkOSCf1   scale gkoverlap, 0.001, 1     ; ~ BankOscFreq1 ~   [Grain Size]
+  kBnkOSCf1   scale gkoverlap, 1, 0.001     ; ~ BankOscFreq1 ~   [Grain Size]
   kBnkOSCf1   portk kBnkOSCf1, 0.08
-  kBnkOSCf2   scale gkloopsize, 0.001, 1    ; ~ BankOscFreq2 ~   [Loop Size]
+  kBnkOSCf2   scale gkloopsize, 1, 0.001    ; ~ BankOscFreq2 ~   [Loop Size]
   kBnkOSCf2   portk kBnkOSCf2, 0.08
-  kLowShift   scale gkdensity, 0.001, 100   ; ~ Low Shift ~     [Grain Rate]
+  kLowShift   scale gkdensity, 100, 0.001   ; ~ Low Shift ~     [Grain Rate]
   kLowShift   portk kLowShift, 0.08
 
 ; [Instrument]

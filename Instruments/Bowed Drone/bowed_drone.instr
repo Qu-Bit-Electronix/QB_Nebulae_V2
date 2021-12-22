@@ -19,16 +19,16 @@ gisinewave ftgen 0, 0, 4096, 10, 1
 
 instr 1
 
-  kres   scale gkspeed, 0, 0.8        ; Resonance (Speed)
-  kpitch scale gkpitch, 6, 11         ; Pitch
+  kres   scale gkspeed, 0.8, 0        ; Resonance (Speed)
+  kpitch scale gkpitch, 11, 6         ; Pitch
   kpitch pow  2, kpitch               ; Make pitch 1V/Octave
-  kglide scale gkwindow, 0, 0.175     ; Glide
+  kglide scale gkwindow, 0.175, 0     ; Glide
   kpitch portk kpitch, kglide
-  kfco   scale gkblend, 20, 6000      ; Cutoff Frequency (Mix)
-  kpres  scale gkdensity, 1, 5        ; Pressure (Grain Rate)
-  krat   scale gkoverlap, 0.025, 0.23 ; Position (Grain Size)
-  kvibf  scale gkloopstart, 0, 10     ; Vibrato Frequency (Loop Start)
-  kvamp  scale gkloopsize, 0, .05     ; Vibrato Amplitude (Loop Size)
+  kfco   scale gkblend, 6000, 20      ; Cutoff Frequency (Mix)
+  kpres  scale gkdensity, 5, 1        ; Pressure (Grain Rate)
+  krat   scale gkoverlap, 0.23, 0.025 ; Position (Grain Size)
+  kvibf  scale gkloopstart, 10, 0     ; Vibrato Frequency (Loop Start)
+  kvamp  scale gkloopsize, .05, 0     ; Vibrato Amplitude (Loop Size)
 
   kamp = 0.95
 
