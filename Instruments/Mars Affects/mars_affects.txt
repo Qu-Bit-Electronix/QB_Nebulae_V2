@@ -1,6 +1,6 @@
 
 -------------------------------------------------
-MARS AFFECTS v1.3, 2021-08-16
+MARS AFFECTS v1.4, 2021-10-05
 -------------------------------------------------
 Mars Affects, an effect instrument for the Qu-Bit Nebulae v2.
 Based on the original 'Effects' and 'World of Echo' instruments.
@@ -12,14 +12,16 @@ Changes / Enhancements to the original instrument
 -------------------------------------------------
 Two delay lines, which can be Skewed independently to create a Stereo Delay.
 Reverb effect can be enriched with a Chorus-like effect.
-The reverb enrichment can be either an LFO (Pitch clockwise) or random (Pitch counter clockwise).
-Two input modes: Stereo or 2x Mono mode. Output is Stereo in both modes.
+The Reverb enrichment can be either an LFO (Pitch clockwise) or random (Pitch counter clockwise).
+Two input modes: Stereo or '2x Mono mode'. Output is Stereo in both modes.
+Mixing Left and Right signal, very handy in '2x Mono mode'.
 Independent control for the Dry or Delay signal going into the Reverb.
 Knob ranges and responses have been tweaked to go a bit more extreme.
 
 Fixed issue #1: Delay line could have a delay time set larger than the buffer, resulting in noisy static. Fixed in v1.1
 Fixed issue #2: Delay feedback size 1 could break the reverb send, resulting in noisy static. Fixed in v1.2
 Enhanchment #3: A rewrite of the Chorus-like shimmer effect. v1.3
+Enhanchment #4: Removed the inverted working of the secondary controls for Left/Right mixing and controling the Dry signal/Delay into Reverb. v1.4
 
 
 -------------------------------------------------
@@ -28,14 +30,14 @@ Delay Section (Top three knobs)
 Start       - Delay Time
 Speed       - Delay Stereo Skew
 Size        - Delay Feedback
-Size Alt    - Delay signal to Reverb (inverted*)
+Size Alt    - Delay signal to Reverb
 
 ---
 Pressing Speed will reset the Stereo Skew to Mono (right LED) or a set 'moderate' Stereo field (left LED).
 Rotating Speed will extend the skew time between delay effects.
 
 Size Alt (secondary function) controls the amount of Delay going into Reverb.
-This value is inverted*. At CCW all Delay is passed to reverb, at CW no Delay is passed to Reverb.
+At CW all Delay is passed to Reverb, at CCW no Delay is passed to Reverb.
 
 Start Alt has currently no function.
 
@@ -48,7 +50,7 @@ Density Alt - Pitch LFO/random Speed
 Pitch       - Reverb Chorus-like Effect Amount
 Pitch Alt   - Reverb Effect Feedback and 'Shift' Amount
 Overlap     - Reverb Filter Colour
-Overlap Alt - Dry signal to Reverb (inverted*)
+Overlap Alt - Dry signal to Reverb
 
 ---
 Pressing Pitch will reset the Chorus-like effect to zero.
@@ -56,17 +58,17 @@ Pressing Pitch will reset the Chorus-like effect to zero.
 Pitch Alt (secondary function) controls the Feedback and 'shift' amount of the Chorus-like effect.
 
 Overlap secondary function controls the amount of Dry signal going into Reverb.
-This value is inverted*. At CCW all Dry signal is passed to reverb, at CW no Dry signal is passed to Reverb.
+At CW all Dry signal is passed to reverb, at CCW no Dry signal is passed to Reverb.
 
 
 -------------------------------------------------
 Mixing Section (Lower two knobs and buttons)
 -------------------------------------------------
 Blend       - Delay Amount
-Blend Alt   - Left signal level (inverted*)
+Blend Alt   - Left signal level
 
 Window      - Reverb Amount
-Window Alt  - Right signal level (inverted*)
+Window Alt  - Right signal level
 
 Record      - Mute incoming Signal
 Source      - Stereo or 2x Mono mode
@@ -76,12 +78,12 @@ Freeze      - 100% Wet
 Blend controls the Delay amount.
 
 Blend secondary function controls the level of Left signal coming in.
-This value is inverted*. At CCW all Left signal is processed, at CW no signal is processed.
+At CW all Left signal is processed, at CCW no signal is processed.
 
 Window controls the Reverb amount.
 
 Window secondary function controls the level of Right signal coming in.
-This value is inverted*. At CCW all Right signal is processed, at CW no signal is processed.
+At CW all Right signal is processed, at CCW no signal is processed.
 
 Pressing Record will stop the incoming audio.
 The Delay and Reverb effect continue to run until faded out. You can still play with long feedbacks.
@@ -95,17 +97,14 @@ Triggered by a falling edge (short) pulse.
 Pressing Freeze will not mix the Dry signal, only the Wet signal is heard.
 Triggered by a rising edge pulse.
 
-* This is inverted because the default value of the secondary functions is '0' and would start with no effect / signal as result.
-  In the default settings, all Dry and Delay signal is passed to the Reverb effect and incoming signals are at 100% level.
-  
 File and Reset knobs and Pulse input currently have no function.
 
 
 -------------------------------------------------
-Tips:
+Tips and tricks
 -------------------------------------------------
 Delay time '0' (Start at CCW) and Feedback high (Size towards CW) will go to Flanger/Karplus range effects.
-There are situations where left or right independently might be cancelled or go into Flanger/Karplus range.
+There are situations in Delay where left or right independently might be cancelled or go into Flanger/Karplus range.
 There is no clock division or multiplication, but adding a clock to the Speed in can have very similar results.
 Muting the incoming signal with Record, you can still play with the effects when a large Feedback is set for the Delay and Reverb.
 

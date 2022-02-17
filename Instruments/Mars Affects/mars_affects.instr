@@ -2,11 +2,15 @@ nebconfigbegin
 ksmps,1
 -B,512
 -b,128
+blend_alt, 1.0
+window_alt, 1.0
+size_alt, 1.0
+overlap_alt, 1.0
 sr,48000
 nebconfigend
 
 /****************
- MARS AFFECTS v1.3, based on Original 'Effects' / 'World of Echo'
+ MARS AFFECTS v1.4, based on Original 'Effects' / 'World of Echo'
 
  * Overview of controls *
  * Pitch        - Reverb Pitch RND - LFO      [gkpitch]
@@ -15,15 +19,15 @@ nebconfigend
  * Start        - Delay Time                  [gkloopstart]
  * Start Alt    -                             [gkloopstart_alt]
  * Size         - Feedback                    [gkloopsize]
- * Size Alt     - Delay to Reverb (inv)       [gkloopsize_alt]
+ * Size Alt     - Delay to Reverb             [gkloopsize_alt]
  * Density      - Reverb Time                 [gkdensity]
  * Density Alt  - Pitch LFO Speed             [gkdensity_alt]
  * Overlap      - Reverb Filter               [gkoverlap]
- * Overlap Alt  - Dry to Reverb (inv)         [gkoverlap_alt]
+ * Overlap Alt  - Dry to Reverb               [gkoverlap_alt]
  * Blend        - Delay Amount                [gkblend]
- * Blend Alt    - Left mix (inv)              [gkblend_alt]
+ * Blend Alt    - Left mix                    [gkblend_alt]
  * Window       - Reverb Amount               [gkwindow]
- * Window Alt   - Right mix (inv)             [gkwindow_alt]
+ * Window Alt   - Right mix                   [gkwindow_alt]
  * Record       - Mute Incomming Signal       [gkrecord]
  * File         - (none)                      [gkfilesel]
  * Source       - 2x Mono in mode             [gksource]
@@ -34,7 +38,9 @@ nebconfigend
  #1 : Delay line could have a delay time set larger than the buffer, resulting in noisy static. Fixed in 1.1
  #2 : Delay feedback size 1 could break the reverb send, resulting in noisy static. Fixed in 1.2
  #3 : Rewrite of the 'chorus' effect. Version 1.3
- 
+ #4 : Use 'nebconfig' for secondary control defaults (see defaultnebsettings.txt) to remove the inverted working of secondary blend, window, size and overlap. Fixed in 1.4
+      Downside; the defaultnebsettings.txt overwrite these settings when testing.
+
 ****************/
 
 instr 1
@@ -48,8 +54,8 @@ ainl, ainr inch 1, 2
 ; RECORD and SOURCE - Mute incoming signal and Stereo / 2x Mono mode
 
 if gkrecord == 0 then
-  ainl = ainl * (1 - gkblend_alt)
-  ainr = ainr * (1 - gkwindow_alt)
+  ainl = ainl * gkblend_alt
+  ainr = ainr * gkwindow_alt
   if gksource == 1 then
     atot = (ainl + ainr) * 0.8
     ainl = atot
@@ -76,8 +82,8 @@ kreverb_amount = gkwindow
 
 ; SIZE_ALT and OVERLAP_ALT - Set Delay/Dry to Reverb amount
 
-kdelay_to_reverb_amount = (1 - gkloopsize_alt)
-koriginal_to_reverb = (1 - gkoverlap_alt)
+kdelay_to_reverb_amount = gkloopsize_alt
+koriginal_to_reverb = gkoverlap_alt
 
 
 ; PITCH, PITCH_ALT, DENSITY_ALT - Set Chorus-like amount
