@@ -1,0 +1,372 @@
+nebconfigbegin
+ksmps,128
+-B,2048
+-b,128
+size_alt,0.5
+pitch_alt,0.5
+reset,triggered,rising
+file,incremental,falling
+sr,48000
+nebconfigend
+
+/****************
+ AVALON - "Morphing Nebulaeum" v1.4, 2-12-2021, inspired by the Synthesis Technology Morphing Terrarium E350, Cloud Terrarium E352 and capable of loading samples from the WaveEdit program.
+
+ * Overview of controls *
+ * Pitch        - Coarse tune           [gkpitch]           ; Pitch coarse tune
+ * Pitch Alt    - Fine tune             [gkpitch_alt]       ; Pitch fine tune
+ * Speed        - Z course              [gkspeed]           ; Z morphing
+ * Start        - X                     [gkloopstart]       ; X morphing
+ * Start Alt    - ---                   [gkloopstart_alt]
+ * Size         - Z fine                [gkloopsize]        ; Z fine morphing
+ * Size Alt     - Z fine range          [gkloopsize_alt]    ; Range of -/+ 1,2,4,6 or 8 samples
+ * Density      - Y                     [gkdensity]         ; Y morphing
+ * Density Alt  - ---                   [gkdensity_alt]
+ * Blend        - XY-Z morph            [gkblend]
+ * Blend Alt    - XY-Z morph mode       [gkblend_alt]       ; Mode from 1 to 5 (CCW, 9-10, 12, 14-15, CW)
+ * Overlap      - Octave Volume         [gkoverlap]         ; Volume of the 1 Up and 1 Down octave, besides the 'center' octave (CCW is off, CW = 100%)
+ * Overlap Alt  - Octave Volume Mode    [gkoverlap_alt]     ; 3 Modes, when (Overlap = CW) then volumes: (CCW: Up = 150%, Down = 66%), (12h: Up, Down = 100%), (CW: Up = 66%, Down = 150%), compared to 'center' octave
+ * Window       - Detune                [gkwindow]          ; Detune the 1 Up and 1 Down octave
+ * Window Alt   - Instant detune range  [gkwindow_alt]      ; Selecting this will offset a detune to/from Window. This way Window/Overlap will not hit Unison.
+ * Record       - No morphing Y         [gkrecord]          ; No morphing of Y between different waves
+ * Record Alt   - No morphing X         [gkrecord_alt]      ; No morphing of X between different waves
+ * File         - Next bank             [gkfilesel]         ; Select next bank
+ * Source       - No morphing Z         [gksource]          ; No morphing of Z between different waves
+ * Reset        - ---                   [gkreset]
+ * Freeze       - Instant detune        [gkfreeze]          ; enabling 'Freeze' makes that Detune will not hit unison.
+
+ Issues / Fixed / Rework / Enhancement
+ #1 : Pressing Reset will return to bank 1 (first bank). Consecutive presses will advance 5 banks. Added in v1.1
+ #2 : Code optimization, no functional changes. v1.2
+ #3 : Complete rewrite of morphing technique and oscillator type, to eliminate pitch artefacts. v1.3
+ #4 : Added detuning and 'no morphing' (selecting) of waves. v1.4
+
+****************/
+
+instr 1
+
+; === INITIALIZATION
+; =========================
+
+kInit init 1
+if kInit == 1 then
+  ; Do things at init time
+  ; The function 'init' can be used in statements, but this is evaluated every cycle. Now only 1 'init' needs to be evaluated
+
+  ; Number of waves in a XY-row or Z-bank
+  knumwavesX = 8
+  knumwavesY = 8
+  knumwavesZ = 64
+
+  ; empty tables
+  iTabY1 ftgen 600, 0, 256, -2, 0
+  iTabY2 ftgen 601, 0, 256, -2, 0
+  iTabY3 ftgen 602, 0, 256, -2, 0
+  iTabY4 ftgen 603, 0, 256, -2, 0
+  iTabY5 ftgen 604, 0, 256, -2, 0
+  iTabY6 ftgen 605, 0, 256, -2, 0
+  iTabY7 ftgen 606, 0, 256, -2, 0
+  iTabY8 ftgen 607, 0, 256, -2, 0
+  iTabXY ftgen 608, 0, 768, -2, 0
+  iTabZ  ftgen 609, 0, 768, -2, 0
+
+  ; Nebulae V2 loaded files will start at table 400, 399 + 'gkfilesel' starts at 400.
+  kBank = 400
+  kFileSel_offset = 399
+
+;;  ; On every 'File press', 'gkfilesel' is set to the internal 'Current file index'.
+;;  ; This means when 'gkfilesel' would manually be reset to '0' and 'File' is being pressed, it does not advance to '1', but to 'Current file index + 1'.
+;;  ; We need to make our own 'Press File' and 'Selected File' meganism
+;;  kfilesel = gkfilesel  ; Store the 'saved' (last selected) wavetable bank
+;;  gkfilesel_old = gkfilesel
+;;  if kfilesel = 0 then
+;;    kreset = 1
+;;  endif
+
+  ; Defince C in Hz
+  kC4 = 261.625565
+  kC3 = kC4 / 2
+  kC2 = kC4 / 4
+  kBaseC = kC3
+
+  ; Amplitude can be (too) hight sometimes, make it 0.8
+  kAmp = 0.8
+
+  ; 'init' is over
+  kInit = 0
+endif
+
+
+;; ; BANK SELECT
+;; ; =========================
+;; 
+;; ; Detect Reset
+;; kresettrig trigger gkreset, 0.5, 0
+;; 
+;; ; Detect File press, does not work 100% with a trigger
+;; if gkfilesel_old != gkfilesel then
+;;   gkfilesel_old = gkfilesel
+;;   kreset = 0
+;;   kfilesel = kfilesel + 1
+;; endif
+;; 
+;; if kresettrig == 1 then
+;;   if kreset = 0 then
+;;     ; when reset is pressed after a File press (reset = 0), reset to wavetable bank 0
+;;     kfilesel = 0
+;;     kreset = 1
+;;   else
+;;     ; when reset is pressed directly after reset (reset = 1), advance 5 wavetables banks
+;;     kfilesel = kfilesel + 5
+;;   endif
+;; endif
+;; 
+;; ; If we would advance further than the number of loaded waveform banks, reset to 0
+;; if kfilesel > ginumfiles - 1 then
+;;   kreset = 1
+;;   kfilesel = 0
+;; endif
+;; 
+;; ; gkfilesel - index of table containing audio file data. 'gkfilesel' is updated (and rotated) on 'File' press.
+;; kBank = kFileSel_offset + kfilesel + 1
+
+kBank = kFileSel_offset + gkfilesel + 1
+
+; PITCH FACTOR
+; =========================
+
+kPitch_scale scale gkpitch, 2, -3
+kPitch_fine = kPitch_scale * (1 + ((gkpitch_alt - 0.5) / 10))
+
+kPitch pow 2, kPitch_fine
+;kPitch_factor = kPitch * (kBaseC / ( sr / 256 ))  ;  Compensate for pitch, to have 0v = C3 = 130.8128 Hz
+
+
+; === MORPHING
+; =========================
+
+; X Morphing
+; =========================
+
+kPosX portk (gkloopstart * (knumwavesX - 1)), 0.02
+
+kIndexX = int(kPosX)
+
+kIndexX1 = round((kIndexX / 2) + 0.000001 ) * 2
+kIndexX1 = (kIndexX1 > (knumwavesX - 1) ? 0 : kIndexX1)
+kIndexX2 = (round(((kIndexX + 1) / 2) + 0.000001) * 2) - 1
+
+kVolX2 = ((kPosX % 2) < 1 ? (kPosX % 2) : 1 - ((kPosX % 2) - 1))
+kVolX1 = 1 - kVolX2
+
+; gkrecord_alt does not function in instr_tester (!)
+if (gkrecord_alt = 1) then
+  kIndexX = int(kPosX + 0.5)
+  kVolX1 = (kIndexX % 2 = 0 ? 1 : 0)
+  kVolX2 = (kIndexX % 2 = 0 ? 0 : 1)
+endif
+
+;;  -- samples starting points, length 256 each
+;;  7 14336 14592 14848 15104 15360 15616 15872 16128
+;;  6 12288 12544 12800 13056 13312 13568 13824 14080
+;;  5 10240 10496 10752 11008 11264 11520 11776 12032
+;;  4  8192  8448  8704  8960  9216  9472  9728  9984
+;;  3  6144  6400  6656  6912  7168  7424  7680  7936
+;;  2  4096  4352  4608  4864  5120  5376  5632  5888
+;;  1  2048  2304  2560  2816  3072  3328  3584  3840
+;;  0     0   256   512   768  1024  1280  1536  1792
+;;  Y X > 0     1     2     3     4     5     6     7
+
+; 8 tables, 1 for each 'Y-row', when we move 'gkdensity', we will morph through iTabY1 (ftgen table 600) to iTabY8 (ftgen table 607)
+; tablemix DEST_TABLE, START_INDEX, #POINTS_TO_COPY
+tablemix iTabY1, 0, 256, kBank, (kIndexX1 * 256) + 00000, kVolX1, kBank, ((kIndexX2) * 256) + 00000, kVolX2
+tablemix iTabY2, 0, 256, kBank, (kIndexX1 * 256) + 02048, kVolX1, kBank, ((kIndexX2) * 256) + 02048, kVolX2
+tablemix iTabY3, 0, 256, kBank, (kIndexX1 * 256) + 04096, kVolX1, kBank, ((kIndexX2) * 256) + 04096, kVolX2
+tablemix iTabY4, 0, 256, kBank, (kIndexX1 * 256) + 06144, kVolX1, kBank, ((kIndexX2) * 256) + 06144, kVolX2
+tablemix iTabY5, 0, 256, kBank, (kIndexX1 * 256) + 08192, kVolX1, kBank, ((kIndexX2) * 256) + 08192, kVolX2
+tablemix iTabY6, 0, 256, kBank, (kIndexX1 * 256) + 10240, kVolX1, kBank, ((kIndexX2) * 256) + 10240, kVolX2
+tablemix iTabY7, 0, 256, kBank, (kIndexX1 * 256) + 12288, kVolX1, kBank, ((kIndexX2) * 256) + 12288, kVolX2
+tablemix iTabY8, 0, 256, kBank, (kIndexX1 * 256) + 14336, kVolX1, kBank, ((kIndexX2) * 256) + 14336, kVolX2
+
+
+; Y Morphing
+; =========================
+
+kPosY portk (gkdensity * (knumwavesY - 1)), 0.02
+
+kIndexY = int(kPosY)
+
+kIndexY1 = round((kIndexY / 2) + 0.000001) * 2
+kIndexY1 = (kIndexY1 > (knumwavesY - 1) ? 0 : kIndexY1)
+kIndexY2 = (round(((kIndexY + 1) / 2) + 0.000001) * 2) - 1
+
+kVolY2 = ((kPosY % 2) < 1 ? (kPosY % 2) : 1 - ((kPosY % 2) - 1))
+kVolY1 = 1 - kVolY2
+
+if (gkrecord = 1) then
+  kIndexY = int(kPosY + 0.5)
+  kVolY1 = (kIndexY % 2 = 0 ? 1 : 0)
+  kVolY2 = (kIndexY % 2 = 0 ? 0 : 1)
+endif
+
+; now mix the right 'Y-row' into XY
+; The linear interpolation needs preceding and appending sample points to overcome artifacts when the does not start 'at zero'.
+; The most easiest process is to add the same wave before and after the wave that will be played.
+tablemix iTabXY, 000, 256, 600 + kIndexY1, 0, kVolY1, 600 + kIndexY2, 0, kVolY2
+tablemix iTabXY, 256, 256, 600 + kIndexY1, 0, kVolY1, 600 + kIndexY2, 0, kVolY2
+tablemix iTabXY, 512, 256, 600 + kIndexY1, 0, kVolY1, 600 + kIndexY2, 0, kVolY2
+
+
+; Z Morphing
+; =========================
+
+; -- set the Z position fine range
+kPosZfineRange_select scale gkloopsize_alt, 5, 1
+kPosZfineRange_select = round(kPosZfineRange_select)
+
+if     kPosZfineRange_select = 1 then ;; Fully CCW
+  kPosZfineRange = 1
+elseif kPosZfineRange_select = 2 then
+  kPosZfineRange = 2
+elseif kPosZfineRange_select = 3 then
+  kPosZfineRange = 4  ; 'half a row width'
+elseif kPosZfineRange_select = 4 then
+  kPosZfineRange = 6
+elseif kPosZfineRange_select = 5 then ;; Fully CW
+  kPosZfineRange = 8  ; 'one row width'
+endif
+
+kPosZfine = ((gkloopsize * kPosZfineRange) - (kPosZfineRange / 2))
+kPosZ portk (gkspeed * (knumwavesZ - 1) + kPosZfine), 0.02
+kPosZ limit kPosZ, 0, (knumwavesZ - 1)
+
+kIndexZ = int(kPosZ)
+
+kIndexZ1 = round((kIndexZ / 2) + 0.000001) * 2
+kIndexZ1 = (kIndexZ1 > 63 ? 0 : kIndexZ1)
+kIndexZ2 = (round(((kIndexZ + 1) / 2) + 0.000001) * 2) - 1
+
+kvolZ2 = (((kPosZ % 2)) < 1 ? ((kPosZ % 2)) : 1 - (((kPosZ % 2)) - 1))
+kvolZ1 = 1 - kvolZ2
+
+if (gksource = 1) then
+  kIndexZ = int(kPosZ + 0.5)
+  kvolZ1 = (kIndexZ % 2 = 0 ? 1 : 0)
+  kvolZ2 = (kIndexZ % 2 = 0 ? 0 : 1)
+endif
+
+;printks2 "kvolZ1 %f\n", kvolZ1
+;printks2 "kvolZ2 %f\n", kvolZ2
+
+; The linear interpolation needs preceding and appending sample points to overcome artifacts when the does not start 'at zero'.
+; The most easiest process is to add the same wave before and after the wave that will be played.
+tablemix iTabZ, 000, 256, kBank, (kIndexZ1 * 256), kvolZ1, kBank, (kIndexZ2 * 256), kvolZ2
+tablemix iTabZ, 256, 256, kBank, (kIndexZ1 * 256), kvolZ1, kBank, (kIndexZ2 * 256), kvolZ2
+tablemix iTabZ, 512, 256, kBank, (kIndexZ1 * 256), kvolZ1, kBank, (kIndexZ2 * 256), kvolZ2
+
+
+; AUDIO / DETUNING
+; =========================
+
+kSpreadVolume portk gkoverlap, 0.02
+kSpreadVolume scale kSpreadVolume, 1, 0
+
+kSpreadVolumeMode scale gkoverlap_alt, 3, 1
+kSpreadVolumeMode = round(kSpreadVolumeMode)
+
+if kSpreadVolumeMode = 1 then
+  kSpreadVolumeMode_up   =     ((kSpreadVolume * (1/2)))
+  kSpreadVolumeMode      = (1 - (kSpreadVolume * (2/3)))
+  kSpreadVolumeMode_down =     ((kSpreadVolume * (1/4)))
+elseif kSpreadVolumeMode = 2 then
+  kSpreadVolumeMode_up   =     ((kSpreadVolume * (1/3)))
+  kSpreadVolumeMode      = (1 - (kSpreadVolume * (2/3)))
+  kSpreadVolumeMode_down =     ((kSpreadVolume * (1/3)))
+else ;; kSpreadVolumeMode = 3
+  kSpreadVolumeMode_up   =     ((kSpreadVolume * (1/4)))
+  kSpreadVolumeMode      = (1 - (kSpreadVolume * (2/3)))
+  kSpreadVolumeMode_down =     ((kSpreadVolume * (1/2)))
+endif
+
+kNoUnisonRange scale gkwindow_alt, 0.02, 0.005
+kNoUnison = (gkfreeze = 0 ? 0 : kNoUnisonRange)
+
+kDetune_range = 12
+
+kDetune portk gkwindow, 0.02
+kDetune scale kDetune, (kDetune_range/12) - (kNoUnison / 2), kNoUnison
+kDetune pow 2, kDetune
+
+kPitch_factor_up   = ((kPitch * kDetune)     * (kBaseC / ( sr / 256 ))) * 0.5
+kPitch_factor      = ((kPitch * 1)           * (kBaseC / ( sr / 256 )))        ;  Compensate for pitch, to have 0v = C3 = 130.8128 Hz
+kPitch_factor_down = ((kPitch * (1/kDetune)) * (kBaseC / ( sr / 256 ))) * 2
+
+asigXY lposcil kAmp, kPitch_factor, 256, 512, iTabXY
+asigZ  lposcil kAmp, kPitch_factor, 256, 512, iTabZ
+  
+asigXY1 lposcil kAmp * kSpreadVolumeMode_up  , kPitch_factor_up  , 256, 512, iTabXY
+asigXY2 lposcil kAmp * kSpreadVolumeMode     , kPitch_factor     , 256, 512, iTabXY
+asigXY3 lposcil kAmp * kSpreadVolumeMode_down, kPitch_factor_down, 256, 512, iTabXY
+asigXY4 = asigXY1 + asigXY2 + asigXY3
+
+asigZ1  lposcil kAmp * kSpreadVolumeMode_up  , kPitch_factor_up  , 256, 512, iTabZ
+asigZ2  lposcil kAmp * kSpreadVolumeMode     , kPitch_factor, 256, 512, iTabZ
+asigZ3  lposcil kAmp * kSpreadVolumeMode_down, kPitch_factor_down, 256, 512, iTabZ
+asigZ4  = asigZ1 + asigZ2 + asigZ3
+
+
+; MORPH MODES
+; =========================
+
+; kXYZMorphMode = 1 CCW
+; L: XY ->  XY -> XY    : No morphing / no detuning
+; R:  Z -> XYZ -> XY    : Morph Z to XYZ to XY
+
+; kXYZMorphMode = 2
+; L: XY -> XYZ -> Z     : Morph XY to XYZ to Z
+; R:  Z ->   Z -> Z     : No morphing / no detuning
+
+; kXYZMorphMode = 3 CEN
+; L: XY -> XYZ          : Morph XY to XYZ
+; R:  Z -> XYZ          : Morph  Z to XYZ
+
+; kXYZMorphMode = 4
+; L: XY -> XYZ ->  Z    : Morph XY to XYZ to  Z
+; R:  Z -> XYZ -> XY    : Morph  Z to XYZ to XY
+
+; kXYZMorphMode = 5 CW
+; L: XY -> XYZ -> Z     : Morph XY to XYZ to Z
+; R: XY -> XYZ -> Z     : Morph XY to XYZ to Z
+
+
+kblend_alt scale gkblend_alt, 5, 1
+kXYZMorphMode = round(kblend_alt)
+
+kblend portk gkblend, 0.02
+kBlend_factor scale kblend, 0.8, 1
+
+if kXYZMorphMode = 1 then
+  aoutL = asigXY
+  aoutR = ((asigZ4 * (1-kblend)) + (asigXY4 * kblend))
+elseif kXYZMorphMode = 2 then
+  aoutL = ((asigXY4 * (1-kblend)) + (asigZ4 * kblend))
+  aoutR = asigZ
+elseif kXYZMorphMode = 3 then
+  aoutL = (asigXY4 + (asigZ4 * kblend)) * kBlend_factor
+  aoutR = (asigZ4 + (asigXY4 * kblend)) * kBlend_factor
+elseif kXYZMorphMode = 4 then
+  aoutL = ((asigXY4 * (1-kblend)) + (asigZ4 * kblend))
+  aoutR = ((asigZ4 * (1-kblend)) + (asigXY4 * kblend))
+else ;; kXYZMorphMode = 5
+; TODO: add slight stereo field
+  aoutL = ((asigXY4 * (1-kblend)) + (asigZ4 * kblend))
+  aoutR = ((asigXY4 * (1-kblend)) + (asigZ4 * kblend))
+endif
+
+
+; OUTPUT
+; =========================
+
+outs aoutL, aoutR
+
+endin
