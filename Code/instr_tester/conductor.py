@@ -1,5 +1,6 @@
 import filehandler as fh
 import instrparser
+import os
 
 class Conductor(object):
     def __init__(self):
@@ -10,7 +11,7 @@ class Conductor(object):
             self.instr_dir = "instr/"
         elif self.source is "user":
             #self.instr_dir = "/home/alarm/instr/"
-						pass
+            pass
         self.dir = "audio/"
         self.filehandler = fh.FileHandler(self.dir,[".wav",".aif", ".aiff"])
 
@@ -63,6 +64,7 @@ class Conductor(object):
         glen_arrayinit = []
         stereo_ftgen = []
         for i,f in enumerate(self.filehandler.files):
+            f = os.path.normcase(f)
             #fsco_lines.append("f " + str(i + 1) + " 0 0 1 \"" + f + "\" 0 0 0\n")
             fsco_lines.append("f " + str(400 + i) + " 0 0 1 \"" + f + "\" 0 0 1\n")
             glen_arrayinit.append("gSname[" + str(i) +"] = \"" + f + "\"\n")
