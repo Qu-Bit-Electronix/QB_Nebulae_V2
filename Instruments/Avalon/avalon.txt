@@ -1,0 +1,168 @@
+
+-------------------------------------------------
+AVALON - "Morphing Nebulaeum" v1.4, 2-12-2021
+-------------------------------------------------
+Inspired by the Synthesis Technology Morphing Terrarium E350, Cloud Terrarium E352 and capable of loading samples from the WaveEdit program.
+Like the Synthesis Technology Terrarium's and Quad VCO, it can morph a wavetable bank of 64 waves in a 8x8 grid (X and Y) and from wave 1 to 64 (Z).
+It is able to read wavetable banks make by the WaveEdit program.
+
+AVALON comes with a custom wavetable bank, but other WaveEdit wavetable banks can be downloaded here, including the original E350 banks called 'Bank A', 'Bank B' and 'Bank C':
+
+https://waveeditonline.com/index.html
+
+WaveEdit:
+https://synthtech.com/waveedit
+
+
+-------------------------------------------------
+Limitations
+-------------------------------------------------
+- There is no FM like the original instruments.
+- Knobs on the Nebulae are a bit 'quantized', it does not have the morph smoothness like the original instruments.
+- Due to some nature of the Nebulae, there is a slight pormatento when playing notes.
+
+
+-------------------------------------------------
+Operation
+-------------------------------------------------
+Start:        X morph position
+Density:      Y morph position
+Speed:        Z morph position (coarse morph)
+Size:         Z morph position (fine morph)
+Size Alt:     Z morph position (fine morph range)
+Overlap:      Octave up and down volume
+Overlap Alt:  Octave up and down volume Mode
+Window:       Detune the up and down octave
+Window Alt:   Instant detune range
+Freeze:       Instant detune
+Blend:        Blending between XY and Z. Different Blend modes available.
+Blend Alt:    Blend mode. Mode 4 and 5 are 'stereo', see Blend Modes below.
+Record:       Waveform Y selection without morphing.
+Record Alt:   Waveform X selection without morphing.
+Source:       Waveform Z selection without morphing.
+File:         Advances to the next wavetable bank file.
+
+
+-------------------------------------------------
+Outputs
+-------------------------------------------------
+When Blend is Fully CCW:
+
+XY on the Left output. Z on the Right output.
+Except Morph mode 4, which starts both Left and Right as XY.
+
+When rotating Blend towards CW, different morphinh applies to Left and Right, see 'Blending and Morph modes'.
+
+
+-------------------------------------------------
+Blending and Morph modes
+-------------------------------------------------
+Blend:
+  The AVALON instrument allows for blending between the XY and Z waves.
+  There are 5 different settings; where XY or Z are unchanged, whereas the other channel blends between XY and Z.
+
+Blend Alt:
+  1. Full CCW
+  Left:  XY ->  XY -> XY    : Untouched: no blending with Z / no detuning
+  Right:  Z -> XYZ -> XY    : Blend Z to XYZ to XY
+  
+  2. 9 o'clock
+  Left:  XY -> XYZ -> Z     : Blend XY to XYZ to Z
+  Right:  Z ->   Z -> Z     : Untouched: no blending with XY / no detuning
+  
+  3. 12 o'clock
+  Left:  XY -> XYZ          : Blend XY to XYZ
+  Right:  Z -> XYZ          : Blend  Z to XYZ
+  
+  4. 3 o'clock
+  Left:  XY -> XYZ ->  Z    : Blend XY to XYZ to  Z
+  Right:  Z -> XYZ -> XY    : Blend  Z to XYZ to XY
+
+  5. Full CW
+  Left:  XY -> XYZ -> Z     : Blend XY to XYZ to Z
+  Right: XY -> XYZ -> Z     : Blend XY to XYZ to Z
+  
+
+-------------------------------------------------
+Oscilator octave Up / Down volume and Detuning
+-------------------------------------------------
+'Split' the sound into three oscillators up and one down one octave and detune.
+In Morph mode 1 and 2, the 'untouched' morph channel is not detuned.
+
+Overlap:
+  Increase the volume of the Up and Down octave oscillators.
+
+  CCW = 0%, CW = 100% volume of the Up and Down oscillators.
+
+Overlap Alt:
+  3 volume Modes of the Up and Down oscillators.
+  When (Overlap = CW) then volumes compared to 'middle' octave:
+
+  CCW: Up = 150%, Down = 66%
+  12h: Up = 100%, Down = 100%
+  CW:  Up = 66%,  Down = 150%
+
+Window:
+  Increases the detuning from no detuning to one octave up and one octave down.
+  There are no tuned (music theory modes) intervals in between...
+
+Window Alt:
+  Instant detune range, from 'a fraction' to 'a bit more'.
+
+Freeze:
+  Instant detune (no unison at CW or CCW of Overlap).
+
+
+-------------------------------------------------
+XY and Z morphing
+-------------------------------------------------
+Start and Density:
+  Start and Density will morph the waves in a XY grid like fashion.
+  The 64 waves from the WaveEdit application are split in an 8 by 8 grid (see 'Grid XY View' in WaveEdit).
+  Start morphs the wave in the X direction, while Density morphs in the Y direction.
+
+Speed and Size:
+  Speed morphs only in one direction 'Z', from wave 1,2,3 etc to the 64th wave (see 'Waterfall View' in WaveEdit).
+  Size is fine morphing. The Speed knob is slightly quantized by nature.
+
+Record:
+  When Record is selected, there will be no morphing when 'selecting' the waves on the Y-axis with Density.
+  You can choose 'clean' waves from the Y-axis and still morph between the waves in that row when Record Alt is deselected. 
+  However, the Blend knob still blends between the XY and Z output. This way you can 'morph' between waves which are not 'neighbours' of each other!
+
+Record Alt:
+  When Record Alt is selected (press and hold Source, (de)select Record, release Source), there will be no morphing when 'selecting' the waves on the X-axis with Start.
+  You can choose 'clean' waves from the X-axis and still morph between the waves in the Y-axis 'column' when Record is deselected.
+  However, the Blend knob still blends between the XY and Z output. This way you can 'morph' between waves which are not 'neighbours' of each other!
+
+Source:
+  When Source is selected, there will be no morphing when 'selecting' the waves on the Z-axis with Speed and Size. You can choose 'clean' waves from the Z-axis.
+  However, the Blend knob still blends between the XY and Z output. This way you can 'morph' between waves which are not 'neighbours' of each other!
+
+
+-------------------------------------------------
+Z fine morph and morph range
+-------------------------------------------------
+Size:
+  Morphing through Z (64 waves) is not very smooth, as the knob value is a bit 'quantized'.
+  The Size knob allows fine tuning of the Z morphing. The Size Alt (Shift/Secondary Size) defines the range of this fine tuning as 'an offset' to the Speed knobs Z morph.
+  Size at 12 o'clock mean no -/+ of offset.
+
+Size Alt:
+  Full CCW    - 1 wave range,  -/+ 0.5 'wave length' from center.
+  9 to 10     - 2 waves range, -/+ 1.0 'wave length' from center.
+  12 o'clock  - 4 waves range, -/+ 2.0 'wave length' from center.
+  14 to 15    - 6 waves range, -/+ 3.0 'wave length' from center.
+  Full CW     - 8 waves range, -/+ 4.0 'wave length' from center. This is equal to the range of X and Y.
+
+
+-------------------------------------------------
+Tips and tricks
+-------------------------------------------------
+
+Morph mode 4 and 5 are fun in stereo with modulation of the Blend knob (set to CCW for full modulation, knobs are 'offset' when CV is patched).
+
+
+Have fun!
+Cheers, Airell
+
