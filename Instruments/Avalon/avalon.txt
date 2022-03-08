@@ -1,6 +1,6 @@
 
 -------------------------------------------------
-AVALON - "Morphing Nebulaeum" v1.4, 2-12-2021
+AVALON - "Morphing Nebulaeum" v1.5, 8-3-2021
 -------------------------------------------------
 Inspired by the Synthesis Technology Morphing Terrarium E350, Cloud Terrarium E352 and capable of loading samples from the WaveEdit program.
 Like the Synthesis Technology Terrarium's and Quad VCO, it can morph a wavetable bank of 64 waves in a 8x8 grid (X and Y) and from wave 1 to 64 (Z).
@@ -17,9 +17,14 @@ https://synthtech.com/waveedit
 -------------------------------------------------
 Limitations
 -------------------------------------------------
-- There is no FM like the original instruments.
+- There is no FM cross modulation like the original instruments.
 - Knobs on the Nebulae are a bit 'quantized', it does not have the morph smoothness like the original instruments.
-- Due to some nature of the Nebulae, there is a slight pormatento when playing notes.
+- Due to the nature of Nebulae's original firmware, there is a slight pormatento when playing notes.
+  This is probably fixed when using TheTechnobear firmware, but Avalon is not teste against it.
+  See: https://modwiggler.com/forum/viewtopic.php?p=3204538&sid=6c01d7d22209629d91771ba57c0c9cda#p3204538
+    Version 2.1.4
+    Changes:
+    - v/oct input is now smoothed much less, so there is no longer a gliding effect when frequent or large v/oct changes are made.
 
 
 -------------------------------------------------
@@ -42,6 +47,38 @@ Record Alt:   Waveform X selection without morphing.
 Source:       Waveform Z selection without morphing.
 File:         Advances to the next wavetable bank file.
 
+* 'Alt' means the Secondary position of that knob.
+  Hold Source and turn or press that knob to adjust the 'Alt' values.
+
+
+-------------------------------------------------
+First Patch! 'initial settings'
+-------------------------------------------------
+
+Many want 'instant action'. When knobs are initially in different positions, the sound may be awfull :D
+When having only the avalon.wav loaded/present on the USB stick, the following will produce a sine wave on the L output (XY):
+
+Start   0 (CCW)
+Density 0 (CCW)
+Window  0 (CCW)
+Overlap 0 (CCW)
+Size    Half way (12 o'clock)
+
+Now when turning Start, you will morph through the X position of the wavetable.
+When turning Density, you will morph through the Y position of the wavetable.
+The Overlap and Window knob will not change the sound when 'Blend Alt' is fully CCW as the XY output is untouched in 'Morph mode 1'.
+
+The waveform in the R output (Z) depends on the Speed and Size position.
+The Size position is usually half way up (12 o'clock).
+When Speed is set to fully 0 (turn Speed CCW until left LED is purple), the R output (Z) will produce a sine wave.
+Turning Speed will 'jump' a but through waves for the R output (Z), use Size for fine morphing.
+
+Now, when listening to the R output (Z) and turning Overlap, you will start to hear the octave up and down counter parts comming in.
+After that, turn the Windows slightly up (or press Freeze), the octave up and down counter parts will detune!
+Add some reverb and your boring wave will become full and phat!
+
+See 'Morph modes' for more information about the different outputs.
+
 
 -------------------------------------------------
 Outputs
@@ -49,7 +86,7 @@ Outputs
 When Blend is Fully CCW:
 
 XY on the Left output. Z on the Right output.
-Except Morph mode 4, which starts both Left and Right as XY.
+Except Morph mode 5, which starts both Left and Right as XY and end as Z.
 
 When rotating Blend towards CW, different morphinh applies to Left and Right, see 'Blending and Morph modes'.
 

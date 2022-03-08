@@ -10,7 +10,7 @@ sr,48000
 nebconfigend
 
 /****************
- AVALON - "Morphing Nebulaeum" v1.4, 2-12-2021, inspired by the Synthesis Technology Morphing Terrarium E350, Cloud Terrarium E352 and capable of loading samples from the WaveEdit program.
+ AVALON - "Morphing Nebulaeum" v1.5, 8-3-2022, inspired by the Synthesis Technology Morphing Terrarium E350, Cloud Terrarium E352 and capable of loading samples from the WaveEdit program.
 
  * Overview of controls *
  * Pitch        - Coarse tune           [gkpitch]           ; Pitch coarse tune
@@ -40,6 +40,7 @@ nebconfigend
  #2 : Code optimization, no functional changes. v1.2
  #3 : Complete rewrite of morphing technique and oscillator type, to eliminate pitch artefacts. v1.3
  #4 : Added detuning and 'no morphing' (selecting) of waves. v1.4
+ #5 : Bugfix: Use orginal amplitide of selected wave table file to remove unwanted 'malforming' of waves. Code cleanup. v1.5
 
 ****************/
 
@@ -74,63 +75,22 @@ if kInit == 1 then
   kBank = 400
   kFileSel_offset = 399
 
-;;  ; On every 'File press', 'gkfilesel' is set to the internal 'Current file index'.
-;;  ; This means when 'gkfilesel' would manually be reset to '0' and 'File' is being pressed, it does not advance to '1', but to 'Current file index + 1'.
-;;  ; We need to make our own 'Press File' and 'Selected File' meganism
-;;  kfilesel = gkfilesel  ; Store the 'saved' (last selected) wavetable bank
-;;  gkfilesel_old = gkfilesel
-;;  if kfilesel = 0 then
-;;    kreset = 1
-;;  endif
-
   ; Defince C in Hz
   kC4 = 261.625565
   kC3 = kC4 / 2
   kC2 = kC4 / 4
-  kBaseC = kC3
-
-  ; Amplitude can be (too) hight sometimes, make it 0.8
-  kAmp = 0.8
+  kBaseC = kC3  ;  Define base frequency
 
   ; 'init' is over
   kInit = 0
 endif
 
 
-;; ; BANK SELECT
-;; ; =========================
-;; 
-;; ; Detect Reset
-;; kresettrig trigger gkreset, 0.5, 0
-;; 
-;; ; Detect File press, does not work 100% with a trigger
-;; if gkfilesel_old != gkfilesel then
-;;   gkfilesel_old = gkfilesel
-;;   kreset = 0
-;;   kfilesel = kfilesel + 1
-;; endif
-;; 
-;; if kresettrig == 1 then
-;;   if kreset = 0 then
-;;     ; when reset is pressed after a File press (reset = 0), reset to wavetable bank 0
-;;     kfilesel = 0
-;;     kreset = 1
-;;   else
-;;     ; when reset is pressed directly after reset (reset = 1), advance 5 wavetables banks
-;;     kfilesel = kfilesel + 5
-;;   endif
-;; endif
-;; 
-;; ; If we would advance further than the number of loaded waveform banks, reset to 0
-;; if kfilesel > ginumfiles - 1 then
-;;   kreset = 1
-;;   kfilesel = 0
-;; endif
-;; 
-;; ; gkfilesel - index of table containing audio file data. 'gkfilesel' is updated (and rotated) on 'File' press.
-;; kBank = kFileSel_offset + kfilesel + 1
+; BANK SELECT
+; =========================
 
 kBank = kFileSel_offset + gkfilesel + 1
+
 
 ; PITCH FACTOR
 ; =========================
@@ -139,7 +99,6 @@ kPitch_scale scale gkpitch, 2, -3
 kPitch_fine = kPitch_scale * (1 + ((gkpitch_alt - 0.5) / 10))
 
 kPitch pow 2, kPitch_fine
-;kPitch_factor = kPitch * (kBaseC / ( sr / 256 ))  ;  Compensate for pitch, to have 0v = C3 = 130.8128 Hz
 
 
 ; === MORPHING
@@ -166,7 +125,7 @@ if (gkrecord_alt = 1) then
   kVolX2 = (kIndexX % 2 = 0 ? 0 : 1)
 endif
 
-;;  -- samples starting points, length 256 each
+;;  -- sample starting points, length 256 each
 ;;  7 14336 14592 14848 15104 15360 15616 15872 16128
 ;;  6 12288 12544 12800 13056 13312 13568 13824 14080
 ;;  5 10240 10496 10752 11008 11264 11520 11776 12032
@@ -211,7 +170,7 @@ endif
 
 ; now mix the right 'Y-row' into XY
 ; The linear interpolation needs preceding and appending sample points to overcome artifacts when the does not start 'at zero'.
-; The most easiest process is to add the same wave before and after the wave that will be played.
+; The most easiest way is to add the same wave before and after the wave (part) that will be played.
 tablemix iTabXY, 000, 256, 600 + kIndexY1, 0, kVolY1, 600 + kIndexY2, 0, kVolY2
 tablemix iTabXY, 256, 256, 600 + kIndexY1, 0, kVolY1, 600 + kIndexY2, 0, kVolY2
 tablemix iTabXY, 512, 256, 600 + kIndexY1, 0, kVolY1, 600 + kIndexY2, 0, kVolY2
@@ -298,12 +257,15 @@ kDetune scale kDetune, (kDetune_range/12) - (kNoUnison / 2), kNoUnison
 kDetune pow 2, kDetune
 
 kPitch_factor_up   = ((kPitch * kDetune)     * (kBaseC / ( sr / 256 ))) * 0.5
-kPitch_factor      = ((kPitch * 1)           * (kBaseC / ( sr / 256 )))        ;  Compensate for pitch, to have 0v = C3 = 130.8128 Hz
+kPitch_factor      = ((kPitch * 1)           * (kBaseC / ( sr / 256 )))
 kPitch_factor_down = ((kPitch * (1/kDetune)) * (kBaseC / ( sr / 256 ))) * 2
+
+kAmp = gipeak[gkfilesel]  ;  get peak amplititude of selected wavetable file
+kAmp = kAmp * 0.9         ;  when pushing the amplitude limits, artifacts will appear when detuning
 
 asigXY lposcil kAmp, kPitch_factor, 256, 512, iTabXY
 asigZ  lposcil kAmp, kPitch_factor, 256, 512, iTabZ
-  
+
 asigXY1 lposcil kAmp * kSpreadVolumeMode_up  , kPitch_factor_up  , 256, 512, iTabXY
 asigXY2 lposcil kAmp * kSpreadVolumeMode     , kPitch_factor     , 256, 512, iTabXY
 asigXY3 lposcil kAmp * kSpreadVolumeMode_down, kPitch_factor_down, 256, 512, iTabXY
