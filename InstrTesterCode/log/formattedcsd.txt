@@ -1,0 +1,99 @@
+Beginning of generated CSOUND Score/Orchestra
+f 0 2147483641
+i1 1 -10
+f 400 0 0 1 "./audio/Mbira_Loop_4.wav" 0 0 1
+f 401 0 0 1 "./audio/Sapo_Loop_6.wav" 0 0 1
+ksmps = 4
+sr = 48000
+
+; File-Looping Orc
+nchnls=2
+0dbfs=1
+; primary controls
+gkpitch chnexport "pitch", 1
+gkspeed chnexport "speed", 1
+gkloopstart chnexport "start", 1
+gkloopsize chnexport "size", 1
+gkdensity chnexport "density", 1
+gkoverlap chnexport "overlap", 1
+gkwindow chnexport "window", 1
+gkfilesel chnexport "file", 1
+gkfreeze chnexport "freeze", 1
+gkreset chnexport "reset", 1
+gkblend chnexport "blend", 1
+gkrecord chnexport "record", 1
+gkfilestate chnexport "filestate", 1
+gksource chnexport "source", 1
+gkeol chnexport "eol", 2
+gksizestatus chnexport "sizestatus", 2
+gkrecordstatus chnexport "recordstatus", 2
+; secondary controls
+gkloopstart_alt chnexport "start_alt", 1
+gkloopsize_alt chnexport "size_alt", 1
+gkdensity_alt chnexport "density_alt", 1
+gkoverlap_alt chnexport "overlap_alt", 1
+gkwindow_alt chnexport "window_alt", 1
+gkfreeze_alt chnexport "freeze_alt", 1
+gkrecord_alt chnexport "record_alt", 1
+gkreset_alt chnexport "reset_alt", 1
+gksource_alt chnexport "source_alt", 1
+gkpitch_alt chnexport "pitch_alt", 1
+gkblend_alt chnexport "blend_alt", 1
+; data buffers -- 100 Files maximum
+gilen[] init 100
+gichn[] init 100
+gSname[] init 100
+gisr[] init 100
+gipeak[] init 100
+            
+gSname[0] = "./audio/Mbira_Loop_4.wav"
+gilen[0] filelen "./audio/Mbira_Loop_4.wav"
+gichn[0] filenchnls "./audio/Mbira_Loop_4.wav"
+gisr[0] filesr "./audio/Mbira_Loop_4.wav"
+gipeak[0] filepeak "./audio/Mbira_Loop_4.wav"
+gSname[1] = "./audio/Sapo_Loop_6.wav"
+gilen[1] filelen "./audio/Sapo_Loop_6.wav"
+gichn[1] filenchnls "./audio/Sapo_Loop_6.wav"
+gisr[1] filesr "./audio/Sapo_Loop_6.wav"
+gipeak[1] filepeak "./audio/Sapo_Loop_6.wav"
+ginumfiles init 2
+
+/****************
+ synth.instr
+
+ This alternate instrument provides a synth voice.
+ It is a work in progress, and not completely implemented 
+    so you will notice not every control does something.
+
+ * Overview of controls *
+ * Pitch - Frequency
+ * Speed - 
+ * Start - 
+ * Size - 
+ * Density - Filter Cutoff
+ * Overlap - Filter Resonance
+ * Blend - Oscillator Waveform
+ * Window - Sub amount
+ * Record - 
+ * File - 
+ * Source - 
+ * Reset - 
+ * Freeze - 
+ ****************/
+
+instr 1
+ilogmax = log(2560.00)
+ilogmin = log(80.0)
+kfreq = exp(gkpitch * (ilogmax - ilogmin) + ilogmin)
+kcutoff = gkdensity * 6000.0
+kres = gkoverlap * 1.00
+awave1 vco2 0.75, kfreq, 4, 0.01
+awave2 vco2 0.75, kfreq, 10
+asub poscil3 0.75, kfreq / 2.0, -1
+amix = (awave1 * gkblend) + (awave2 * (1.0 - gkblend))
+amix += (asub * gkwindow)
+afilt moogladder amix, kcutoff, kres, 1
+aout balance afilt, asub
+outs aout, aout
+endin
+End of generated CSOUND Score/Orchestra

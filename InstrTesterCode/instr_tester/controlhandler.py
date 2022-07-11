@@ -6,8 +6,8 @@ import ctcsound
 #import shiftregister as libSR
 import control
 import os
-#import settings
 import time
+import settings
 #import Adafruit_MCP3008
 
 # Defines for Button/Gate Types
@@ -39,8 +39,8 @@ class ControlHandler(object):
         self.configData = configData
         self.in_ticks = 23
         self.modeChangeControl = None
-        #self.settings = settings.SettingManager()
-        #self.settings.read()
+        self.settings = settings.SettingManager(configData)
+        self.settings.read()
 
         # Set Defaults/Read Config
         digitalControlList = [
@@ -55,34 +55,43 @@ class ControlHandler(object):
                 digitalConfig[ctrl] = self.configData.get(ctrl)
             else:
                 digitalConfig[ctrl] = self.defaultConfig.get(ctrl)
-        self.channels = [control.ControlChannel(self.csound, "speed", 0.25, "static"),
-                        control.ControlChannel(self.csound, "pitch", 0.5, "static"),
-                        control.ControlChannel(self.csound, "start", 0.0, "static"),
-                        control.ControlChannel(self.csound, "size", 1.0, "static"),
-                        control.ControlChannel(self.csound, "mix", 0.0,"static"),
-                        control.ControlChannel(self.csound, "density", 0.001, "static"),
-                        control.ControlChannel(self.csound, "overlap", 0.0012, "static"),
-                        control.ControlChannel(self.csound, "degrade", 1.0, "static"),
-                        control.ControlChannel(self.csound, "file", 0, "static"),
-                        control.ControlChannel(self.csound, "reset", 0, "static"),
-                        control.ControlChannel(self.csound, "freeze", 0, "static"),
-                        control.ControlChannel(self.csound, "source", 0, "static"),
-                        control.ControlChannel(self.csound, "record", 0, "static"),
-                        control.ControlChannel(self.csound, "recordstate", 0, "static")]
 
-        self.altchannels = [control.ControlChannel(self.csound, "speed", 0.25, "static"),
-                        control.ControlChannel(self.csound, "pitch_alt", 0.5, "static"),
-                        control.ControlChannel(self.csound, "start_alt", 0.0, "static"),
-                        control.ControlChannel(self.csound, "size_alt", 1.0, "static"),
-                        control.ControlChannel(self.csound, "mix_alt", 0.0,"static"),
-                        control.ControlChannel(self.csound, "density_alt", 0.000, "static"),
-                        control.ControlChannel(self.csound, "overlap_alt", 0.0012, "static"),
-                        control.ControlChannel(self.csound, "degrade_alt", 0.5, "static"),
-                        control.ControlChannel(self.csound, "file_alt", 0, "static"),
-                        control.ControlChannel(self.csound, "reset_alt", 0, "static"),
-                        control.ControlChannel(self.csound, "freeze_alt", 0, "static"),
-                        control.ControlChannel(self.csound, "source_alt", 0, "static"),
-                        control.ControlChannel(self.csound, "record_alt", 0, "static")]
+        # Gather defaults from config data
+        self.channelnames = ["speed", "pitch", "start", "size", "density", "overlap", "blend", "window", "reset", "file", "record", "freeze", "source", "recordstate"]
+        self.channels = []
+        self.altchannels = []
+        for name in self.channelnames:
+            self.channels.append(control.ControlChannel(self.csound, name, self.settings.load(name), "static"))
+            self.altchannels.append(control.ControlChannel(self.csound, name+"_alt", self.settings.load(name+"_alt"), "static"))
+
+        #self.channels = [control.ControlChannel(self.csound, "speed", 0.25, "static"),
+        #                control.ControlChannel(self.csound, "pitch", 0.5, "static"),
+        #                control.ControlChannel(self.csound, "start", 0.0, "static"),
+        #                control.ControlChannel(self.csound, "size", 1.0, "static"),
+        #                control.ControlChannel(self.csound, "blend", 0.0,"static"),
+        #                control.ControlChannel(self.csound, "density", 0.001, "static"),
+        #                control.ControlChannel(self.csound, "overlap", 0.0012, "static"),
+        #                control.ControlChannel(self.csound, "window", 1.0, "static"),
+        #                control.ControlChannel(self.csound, "file", 0, "static"),
+        #                control.ControlChannel(self.csound, "reset", 0, "static"),
+        #                control.ControlChannel(self.csound, "freeze", 0, "static"),
+        #                control.ControlChannel(self.csound, "source", 0, "static"),
+        #                control.ControlChannel(self.csound, "record", 0, "static"),
+        #                control.ControlChannel(self.csound, "recordstate", 0, "static")]
+
+        #self.altchannels = [control.ControlChannel(self.csound, "speed_alt", 0.25, "static"),
+        #                control.ControlChannel(self.csound, "pitch_alt", 0.5, "static"),
+        #                control.ControlChannel(self.csound, "start_alt", 0.0, "static"),
+        #                control.ControlChannel(self.csound, "size_alt", 1.0, "static"),
+        #                control.ControlChannel(self.csound, "blend_alt", 0.0,"static"),
+        #                control.ControlChannel(self.csound, "density_alt", 0.000, "static"),
+        #                control.ControlChannel(self.csound, "overlap_alt", 0.0012, "static"),
+        #                control.ControlChannel(self.csound, "window_alt", 0.5, "static"),
+        #                control.ControlChannel(self.csound, "file_alt", 0, "static"),
+        #                control.ControlChannel(self.csound, "reset_alt", 0, "static"),
+        #                control.ControlChannel(self.csound, "freeze_alt", 0, "static"),
+        #                control.ControlChannel(self.csound, "source_alt", 0, "static"),
+        #                control.ControlChannel(self.csound, "record_alt", 0, "static")]
         self.channeldict = {}
         for chn in self.channels:
             self.channeldict[chn.name] = chn
@@ -202,19 +211,21 @@ class ControlHandler(object):
         self.defaultConfig["sr"] = ["44100"]
 
     def restoreAltToDefault(self):
-        self.altchanneldict["speed_alt"].setValue(1.0)
-        self.altchanneldict["pitch_alt"].setValue(0.0)
-        self.altchanneldict["start_alt"].setValue(0.0)
-        self.altchanneldict["size_alt"].setValue(0.0)
-        self.altchanneldict["mix_alt"].setValue(0.0)
-        self.altchanneldict["density_alt"].setValue(0.0)
-        self.altchanneldict["overlap_alt"].setValue(0.0)
-        self.altchanneldict["degrade_alt"].setValue(0.5)
-        self.altchanneldict["reset_alt"].setValue(0.0)
-        self.altchanneldict["freeze_alt"].setValue(0.0)
-        self.altchanneldict["source_alt"].setValue(0.0)
-        self.altchanneldict["record_alt"].setValue(0.0)
-        self.altchanneldict["file_alt"].setValue(0.0)
+        for name in self.channelnames:
+            self.altchanneldict[name+"_alt"].setValue(self.settings.load(name+"_alt"))
+        #self.altchanneldict["speed_alt"].setValue(1.0)
+        #self.altchanneldict["pitch_alt"].setValue(0.0)
+        #self.altchanneldict["start_alt"].setValue(0.0)
+        #self.altchanneldict["size_alt"].setValue(0.0)
+        #self.altchanneldict["blend_alt"].setValue(0.0)
+        #self.altchanneldict["density_alt"].setValue(0.0)
+        #self.altchanneldict["overlap_alt"].setValue(0.0)
+        #self.altchanneldict["window_alt"].setValue(0.5)
+        #self.altchanneldict["reset_alt"].setValue(0.0)
+        #self.altchanneldict["freeze_alt"].setValue(0.0)
+        #self.altchanneldict["source_alt"].setValue(0.0)
+        #self.altchanneldict["record_alt"].setValue(0.0)
+        #self.altchanneldict["file_alt"].setValue(0.0)
 
     def setInputLevel(self, scalar):
         tick = scalar
@@ -278,6 +289,8 @@ class ControlHandler(object):
         else: #includes "normal"
             self.channeldict["recordstate"].update()
             recordstate = self.channeldict["recordstate"].getValue()
+            for chn in self.altchannels:
+                chn.update()
             for chn in self.channels:
                 if chn.name != "recordstate":
                     #self.settings.save(chn.name, chn.getValue())

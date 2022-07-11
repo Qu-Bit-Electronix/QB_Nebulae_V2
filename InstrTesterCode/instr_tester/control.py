@@ -507,6 +507,8 @@ class ControlChannel(object):
     def setValue(self, val):
         self.input.setValue(val)
         self.curVal = self.input.getValue()
+        if self.name == "reset":
+            print str(self.curVal)
         self.channel[0] = self.curVal
 
     def getValue(self):
