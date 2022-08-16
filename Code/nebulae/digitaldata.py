@@ -235,23 +235,26 @@ class DigitalData(object):
 
 
     def handle_incremental_value(self):
+        s = self.state
         g = self.g_state
         b = self.b_state
         self.g_state = 0
         self.b_state = 0
         if g == 1 or b == 1:
             if self.inc_order == 0:
-                self.state += 1
-                if self.state >= self.maximum:
-                    self.state = 0
+                s += 1
+                if s >= self.maximum:
+                    s = 0
             elif self.inc_order == 1:
-                self.state -= 1
-                if self.state < 0:
-                    self.state = self.maximum - 1
+                s -= 1
+                if s < 0:
+                    s = self.maximum - 1
             elif self.inc_order == 2:
-                self.state = random.randint(0, self.maximum - 1)
-        if self.state > self.maximum:
-            self.state = 0
+                s = random.randint(0, self.maximum - 1)
+        if s > self.maximum:
+            s = 0
+
+        self.state = s
         
     def getValue(self):
         self.prev_state = self.state
