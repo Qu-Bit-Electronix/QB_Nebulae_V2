@@ -1,0 +1,789 @@
+nebconfigbegin
+-B,2048
+-b,128
+speed,0
+pitch,0.5
+pitch_alt,0.5
+start_alt,0.5
+size_alt,0.5
+density_alt,0.5
+overlap_alt,0.7
+window_alt,0.5
+reset,latching,falling
+reset_alt,latching,falling
+freeze,latching,falling
+freeze_alt,latching,falling
+file,incremental,falling
+file_alt,latching,falling
+
+sr,48000    ; how many sr cycles per second, sr/1000 = a sr millisecond
+kr,500      ; how many kr cycles per second, 1000/kr = every 1000/kr ms there is a control cycle, kr/1000 = a kr millisecond
+;ksmps,120  ; sr/kr
+
+nebconfigend
+
+/****************
+ REALMS - "Multiple aerial mixing synth" v1.0, 15-07-2024; Instrument idea by Robert Pabst. Implementation by Ian Hoogeboom.
+
+ --> If the sounds are not a expected after loading Realms for time, reset the alt/secondary controls by pressing 'Source' and 'Pitch' to reset them to Realms defaults.
+ --> If you think the Input Panning and/or Input Near/Far is not working, check the rotation!
+
+ The idea consists of having multiple rooms.
+ Within a room, two 'ambient' sounds, 'First' and 'Second' will be played. One will be 'Near' and the other 'Far'.
+ 'Near' and 'Far' are implemented as 'effect chains': a near and far effect chain.
+ Sound files should exist in pairs. A 'First' and a 'Second' sound file. With Size at CCW, the 'First' sound file will be loaded as 'Near' and the Second as 'Far'.
+
+ * Overview of controls *
+ 
+ * Speed        - Room Select           [gkspeed]           ; Room selection of room 1,2,3,4,5,6,7
+ * Speed Alt    - Input gain            [gkspeed_alt]       ; Input Gain (default functionality) of Nebulae Hardware (source + press = reset)
+ * Pitch        - Pitch change          [gkpitch]           ; Pitch of all rooms sound files
+ * Pitch Alt    - Output gain           [gkpitch_alt]       ; Output gain
+ * Start        - In Signal, Near/Far   [gkloopstart]       ; Move input signal from Near to Far
+ * Start Alt    - Balance Near/Far      [gkloopstart_alt]   ; Balance volume between Near and Far, including input signal.
+ * Size         - Swap 1st/2nd file     [gkloopsize]        ; Swap First and Second sound files in Near and Far effect chains
+ * Size Alt     - Reverb Tail Time      [gkloopsize_alt]    ; Reverb Tail Time and Reverb PreDelay
+ * Density      - Panning Input         [gkdensity]         ; Panning of input signal
+ * Density Alt  - Far Filter Cutoff     [gkdensity_alt]     ; Filter Cutoff of the Far effects (2000~22000Hz, Moog Ladder)
+ * Overlap      - Rotate Near/Far       [gkoverlap]         ; Rotate of Near and Far signal
+ * Overlap Alt  - Reverb Damping        [gkoverlap_alt]     ; Reverb Damping
+ * Blend        - Balance In and Rooms  [gkblend]           ; Balance volume between Input signal and Room sound files
+ * Blend Alt    - Pulse Mult / Length   [gkblend_alt]       ; Clock Mode: Based on shortest sound file length, between ~100 and ~180 bpm; Random Mode: From 15ms (pulse) to 13 seconds (gate)
+ * Window       - Balance First/Second  [gkwindow]          ; Balance volume of the First and Second sound files
+ * Window Alt   - Reverb Dry/Wet        [gkwindow_alt]      ; Dry/Wet Mix of Reverb/Original Signal
+
+ * Record       - <Reserverd>           [gkrecord]          ; Reserverd for buffer recording in the future
+ * Record Alt   - Stereo / 2x Mono mode [gkrecord_alt]      ; Off = Stereo mode / On = 2x Mono mode
+ * File         - ???                   [gkfilesel]         ; Unsure if gkfilesel can be used. This is Neb Hardware 'reserved' for gkfilesel increment/decrement (file,latching is not supported).
+ * File         - ???                   [gkfilestate]       ; Unsure if gkfilestate (only button, not input!) can be used. This is Neb Hardware 'reserved'?
+ * File Alt     - Gate / Trigger Mode   [gkfile_alt]        ; Off: one Pulse length long pulse (like a gate), On: two short pulses, one at the start of a loop and one at the end of the pulse length.
+ * Source       - Clock / Rnd Mode      [gksource]          ; Off: clock pulses based on the shortest sound file, On: random pulses at all sound file loop restarts.
+ * Reset        - Reverb Type           [gkreset]           ; Change reverb from Reverbsc (Plate) to Freeverb (Clean)
+ * Reset Alt    - Swith Reverb PreDelay [gkreset_alt]       ; Turn Reverb PreDelay On / Off
+ * Freeze       - Rotation Disabled     [gkfreeze]          ; Turn rotation function disabled (Off = Enabled)
+ * Freeze Alt   - Continuous Rotation   [gkfreeze_alt]      ; Swap rotation ditrection when totaly CW or CCW (On = Will swap when totaly CW or CCW)
+
+ Issues / Fixed / Rework / Enhancements:
+
+ v0.1 - Initial version with room morphing and Near/Far switching. Far implemented with reverb.
+ v0.2 - Addition of input signal with Near/Far, Panning and crossfade between input signal and sound files.
+ v0.3 - Addition of Moog Ladder Filter, crossfade between First and Second sound files. Rearange of knobs.
+ v0.4 - Fix of crash when less than 12 sound files.
+        Fixed sample-rate issue (do not pitch compensate, as CSound already does this ('sr' vs. sound file sample rate))
+        Added a second type of reverb, switchable with Source button.
+ v0.5 - Many code optimization changes, debugging and re-aranging structure/signal flow.
+        Added knob/function mapping in .instr file at the top (and re-aranged the knobs (Sorry Robert...)).
+        New room instrument and mixing implementation, should be more parallel now.
+        End of loop Pulse when All or Shortest sound files is looped.
+        Added global room pitch change (lposcil will speedup/slow down sound files).
+        Changes in the 'clean' reverb, but it still sounds 'plate-ish'.
+        Renamed 'crossfade' of Near/Far, First/Second, In/Rooms to 'balance'.
+        Added 'Room Rotation' by panning the Near/Far signal, including input signal. Freeze will disable (or set Overlap to full CW or CCW).
+        Added '2x Mono' mode where Left and Right are processed as mono signals. In 2x Mono mode, Near and Far are panned opposite each other.
+        Added PreDelay, changes with Reverb Tail Time, from 0 to 200ms.
+   rc2: Bug-fix: Edge case with 3 rooms and Pitch set exectly in the middle.
+   rc3: Bug-fix: Re-implementation of Pulse generation. This was broken after implementing pitch for rooms.
+   rc4: Changed summing of a-rate signals and added Output Gain
+   rc5: Implemented 'Pulse backoff period', no pulses generated after a pulse, for the time as long as a pulse takes.
+        A pulse 'gate' at the start of a loop or two triggers marking the beginning of the loop and 'end of high gate'.
+        Changed to max 7 rooms. (Tryied to match the bighter LED colours to be 'in the middle of the rooms', but LED colours are not implemented linear).
+        Added randomness of one in n-rooms when pulse out is for every sound file loop.
+ v1.0 - Renamed v0.5-rc5 to v1.0-rc1.
+   rc1: Small initial parameter tweaks, no new functionality.
+   rc2: Swapped Source on/off mode.
+        Implementation of clock on shortest sound file and clock divider.
+   rc3: Fixed issue when more than 14 files (7 rooms) are present.
+        Comment clean-up.
+
+****************/
+
+instr 1
+
+; If there are no samples, turn off the instrument (otherwise endless short loop)
+if (ginumfiles == 0) then
+  turnoff 1
+endif
+
+; === KNOB FUNCION MAPPINGS
+; =========================
+; when chaning mapping, also change nebconfig if applicable
+
+gkRoomSelect = gkspeed
+gkPitchChange = gkpitch
+
+gkFirstSecondSwap = gkloopsize
+gkFirstSecondBalance = gkwindow
+
+gkNearFarRotateOnOff = gkfreeze
+gkNearFarRotate = gkoverlap
+gkNearFarRotateSwap = gkfreeze_alt    ; Set to 'gkfreeze' when testing in Instr_Tester
+gkNearFarBalance = gkloopstart_alt
+
+gkFarFilterCutoff = gkdensity_alt
+
+gkInputMode = gkrecord_alt            ; Set to 'gkrecord' when testing in Instr_Tester
+gkInputPanning = gkdensity
+gkInputNearFar = gkloopstart
+gkInputRoomsBalance = gkblend
+
+gkOutputGain = gkpitch_alt
+
+gkReverbTailTime = gkloopsize_alt
+gkReverbDamping = gkoverlap_alt
+gkReverbWetDry = gkwindow_alt
+gkReverbType = gkreset
+gkReverbPreDelay = gkreset_alt
+
+gkPulseClockMode = (gksource == 0 ? 1 : 0)
+gkPulseLength = gkblend_alt
+gkPulseMode = gkfile_alt              ; Set to 'gkrecord' when testing in Instr_Tester
+
+
+; === INITIALIZATION
+; =========================
+
+kInit init 1
+if kInit == 1 then
+  ; Do things at init time
+  ; The function 'init' can be used in statements, but this is evaluated every cycle. Now only 1 'init' needs to be evaluated
+  kInit = 0
+
+  ; Ambient volumes of Rooms
+  gkRoomVolArr[] init 7   ; kMaxNumRooms
+  iMaxNumFiles = 14
+
+;  kMaxNumRooms = 7
+  kMaxNumRooms = lenarray(gkRoomVolArr)
+
+  iSr_ms = sr/1000     ; how many audio cycles is 1 ms
+  iKr_ms = kr/1000     ; how many control cycles is 1 ms
+
+  kStart = 1
+  kSwap = 0
+  kSwapAllow = 1
+
+  kPitch = 1
+
+  gkLoopRestart = 0
+  gkFileShortestEnded = 1
+  gkClockPulse = 0
+  kClockPulseCount = -1
+
+  iMaxPreDelay_ms = 200
+
+  kPulseTime = 0
+  kPulseTrigger = 0
+  kMinPulseTime_ms = 15           ; 1 sec will consist of 16 parts of 62.5 ms. A pulse of 15ms is a pulse with of ~25% duty.
+  kMaxPulseTime_ms = 13000        ; 13 seconds is the length of the Arbhar buffer, so one can set the pulse to 'high' for 13 seconds and record a whole buffer
+  kPulseLength_slope = 64         ; steepness of the responce of the knob values (higher is steeper)
+  kPulseLength = kMinPulseTime_ms
+  kPulseMode = 0
+  kPulseBackoffTime = 0
+  kPulseBackoffTime_stage = 0     ; stage 0 = no backoff, stage 1 = backoff during high, stage 2 = backoff during low
+
+  giFileIdx_left_offset = 400
+  giFileIdx_rght_offset = 500
+  giFileIdx_trig_offset = 600
+
+  gkRoom_amp_factor = 1.0         ; amplitude of a single room. 1.0 = do not lower the volume.
+
+  kM_PI_2 = ($M_PI)/2 ;  $M_PI_2 ( 'PI/2' CSound variable not implemented)
+
+  ; generates right channel ftables for stereo files
+  iIndx = 0
+  loop_stereo_assignment:
+    if gichn[iIndx] == 2 then
+      giwoffset ftgen (giFileIdx_rght_offset + iIndx), 0, 0, 1, gSname[iIndx], 0, 0, 2
+    endif
+
+;    ; Create 'trigger table' with same sr and length as the orginal.
+;    ; Generating will also be in 'sr' rate, and due to samplerate convertion of samples which are not in 'sr' rate, it will cause a drift when samples are converted.
+;    ; Therefor we (unfortunetly) need to load the sample (left channel) again in a new table and overwrite it with 0's and create a 100ms 'trigger' in it.
+;    iFileSamps = (gilen[iIndx] * gisr[iIndx]) * (sr / gisr[iIndx])
+;    giEmpty ftgen (giFileIdx_trig_offset + iIndx), 0, iFileSamps, -2, 0
+
+    ; create/load new file for new trigger table (copy the left channel of the soundfile to a new table)
+    giwoffset ftgen (giFileIdx_trig_offset + iIndx), 0, 0, 1, gSname[iIndx], 0, 0, 1
+
+    ; fill new trigger table with 0's for the length of the sample
+    iTemp = 0
+    loop_zero_create:
+      tabw_i 0, iTemp, (giFileIdx_trig_offset + iIndx)
+      iTemp += 1
+    if (iTemp < nsamp(giFileIdx_trig_offset + iIndx)) igoto loop_zero_create
+
+    ; fill new trigger table with 2's for 25ms (the pulse of hight 2 marks the start)
+    iPosition = 0
+    loop_start_create:
+      tabw_i 2, iPosition, (giFileIdx_trig_offset + iIndx)
+      iPosition += 1
+    if (iPosition < (30*iSr_ms)) igoto loop_start_create
+
+    iIndx += 1
+    if (iIndx < ginumfiles) && (iIndx < iMaxNumFiles) igoto loop_stereo_assignment
+  ; end loop_stereo_assignment
+
+  ; room / Sound file assignment
+
+;  gkNumRooms = int((ginumfiles+1)/2)      ; because "round of .5" is 'undefined' ("round(2.5) = 2 !!!" doc: if the fractional part of x is exactly 0.5, the direction of rounding is undefined)
+;  gkNumRooms = (gkNumRooms > kMaxNumRooms ? kMaxNumRooms : gkNumRooms) ; maximum of kMaxNumRooms rooms
+  gkNumRooms min kMaxNumRooms, int((ginumfiles+1)/2)      ; because "round of .5" is 'undefined' ("round(2.5) = 2 !!!" doc: if the fractional part of x is exactly 0.5, the direction of rounding is undefined)
+
+;  printks2 "Number of rooms: %d\n", gkNumRooms
+
+  ; DETERMINE SHORTEST
+  ; -------------------------
+
+  iLenMin = 3600
+
+  iIdx = 0
+  loop_short_create:
+;    if (ginumfiles > iIdx) then
+    iLen = gilen[iIdx]
+    if (iLen < iLenMin) then
+      iLenMin = iLen
+      iFileLenMinSmps = (gilen[iIdx] * gisr[iIdx])
+      giFileLenMinIdx = iIdx
+    endif
+;    endif
+    iIdx += 1
+    if (iIdx < ginumfiles) && (iIdx < iMaxNumFiles) igoto loop_short_create
+
+  ; CLOCK PULSE CREATION
+  ; -------------------------
+  
+  if     (iFileLenMinSmps/gisr[giFileLenMinIdx]) >= 10 then
+    iClockPulseAmount = 128
+  elseif (iFileLenMinSmps/gisr[giFileLenMinIdx]) >= 5 then
+    iClockPulseAmount = 64
+  elseif (iFileLenMinSmps/gisr[giFileLenMinIdx]) >= 2.5 then
+    iClockPulseAmount = 32
+  elseif (iFileLenMinSmps/gisr[giFileLenMinIdx]) > 1.25 then
+    iClockPulseAmount = 16
+  elseif (iFileLenMinSmps/gisr[giFileLenMinIdx]) > 0.66 then
+    iClockPulseAmount = 8
+  elseif (iFileLenMinSmps/gisr[giFileLenMinIdx]) > 0.33 then
+    iClockPulseAmount = 4
+  else
+    iClockPulseAmount = 1
+  endif
+  
+  if iClockPulseAmount > 1 then
+    iCount = 1          ; start at 1, don't overwrite the start pulse with hight of 2
+    loop_clock_create:
+      iPulseWidthCnt = 0
+      loop_trig_create:
+        tabw_i 1, (iCount * (iFileLenMinSmps / iClockPulseAmount)) + iPulseWidthCnt, (giFileIdx_trig_offset + giFileLenMinIdx)
+        iPulseWidthCnt += 1
+      if (iPulseWidthCnt < (30*iSr_ms)) igoto loop_trig_create
+      iCount += 1
+    if (iCount < iClockPulseAmount) igoto loop_clock_create
+  endif
+
+endif   ; kInit == 1
+
+
+; ROOM VOLUMES
+; =========================
+
+; reset volumes, do not use fillarray as this is only done once at init time
+
+gkRoomVolArr[0] = 0
+gkRoomVolArr[1] = 0
+gkRoomVolArr[2] = 0
+gkRoomVolArr[3] = 0
+gkRoomVolArr[4] = 0
+gkRoomVolArr[5] = 0
+gkRoomVolArr[6] = 0     ; kMaxNumRooms - 1
+
+kRoom_scale scale gkRoomSelect, (gkNumRooms-1), 0
+kRoom_port portk kRoom_scale, 0.02
+
+kRoom_vol = frac(kRoom_port)
+
+kRoom = int(kRoom_port)
+
+;; NOTE: somehow, it does not want to _print_ the last room with only "int(kRoom_port) when value created with 'portk'"
+;; printks2 "Welcome in room number %d\n", kRoom
+
+gkRoomVolArr[kRoom] = 1 - kRoom_vol;
+gkRoomVolArr[(kRoom + 1)] = kRoom_vol;
+
+
+; ROOMS
+; =========================
+
+if kStart == 1 then   ;  only start once, could be moved to 'init', but the 'gkRoomVolArr' must be filled first.
+  kFileIndx = 0
+  ;;while kFileIndx < kMaxNumRooms do   ;; (ginumfiles) only able to run 4 to 6 'stereo' mincers at a time... Neb's hardware not sufficient.
+  while (kFileIndx < ginumfiles) && (kFileIndx < iMaxNumFiles) do
+    event "i", 10, 0, 32000000, int(kFileIndx/2), kFileIndx, (frac(kFileIndx/2) * 2) + 1      ; let it run for a year...
+    kFileIndx += 1
+  od
+endif
+
+
+; INPUT SIGNAL PROCESSING
+; =======================
+aInL, aInR inch 1, 2
+
+kInputNearFar_port portk gkInputNearFar, 0.02   ; 0 = Near, 1 = Far
+kInputNearFar = kInputNearFar_port
+
+kInputMode = gkInputMode
+
+if (kInputMode == 0) then
+  ; Stereo In, panning stereo
+
+  kInputPanning_scale scale gkInputPanning, 1.5 - (0.25 * kInputNearFar), 0.5 + (0.25 * kInputNearFar)
+  ;kInputPanning_scale scale gkInputPanning, 1.5, 0.5  ; (2, 0) for a complete 'rotation'
+  kInputPanning_port portk kInputPanning_scale, 0.02
+  kInputPanning = kInputPanning_port
+
+  kInputPanning_sin = sin($M_PI * kInputPanning)
+  kInputPanning_sin_max max 0, kInputPanning_sin
+  kInputPanning_sin_min min 0, kInputPanning_sin
+
+  kVolumeFactor = 1
+
+  ; PANNING
+  aSigInL sum ((aInL * (1 + kInputPanning_sin_min)) * kVolumeFactor), ((aInR * (0 + kInputPanning_sin_max)) * kVolumeFactor)
+  aSigInR sum ((aInL * (0 - kInputPanning_sin_min)) * kVolumeFactor), ((aInR * (1 - kInputPanning_sin_max)) * kVolumeFactor)
+
+  ; NEAR / FAR
+  aInputNearL = (aSigInL * (1 - kInputNearFar))
+  aInputNearR = (aSigInR * (1 - kInputNearFar))
+
+  aInputFarL = (aSigInL * kInputNearFar)
+  aInputFarR = (aSigInR * kInputNearFar)
+else
+  ; 2x Mono In, panning mono Left/Right -> Right/Left
+
+  kInputPanning_scale scale gkInputPanning, 1, 0
+  kInputPanning_port portk kInputPanning_scale, 0.02
+  kInputPanning_Near = kInputPanning_port
+  kInputPanning_Far scale kInputPanning_port, 0.75, 0.25  ; Far signal panned less
+
+  kVolumeFactor = 1
+
+  ; NEAR / FAR
+  aInputNear sum (aInL * (1 - kInputNearFar)), (aInR * kInputNearFar)
+  aInputFar  sum (aInR * (1 - kInputNearFar)), (aInL * kInputNearFar)
+
+  ; PANNING
+  aInputNearL = (aInputNear * (1 - kInputPanning_Near))
+  aInputNearR = (aInputNear *      kInputPanning_Near)
+
+  aInputFarL = (aInputFar *      kInputPanning_Far)
+  aInputFarR = (aInputFar * (1 - kInputPanning_Far))
+endif
+
+
+; MIXING ROOMS
+; =========================
+
+;; getting sounds from the Room instruments
+
+aSigFirstL  chnget "MixLFirst"
+aSigFirstR  chnget "MixRFirst"
+aSigSecondL chnget "MixLSecond"
+aSigSecondR chnget "MixRSecond"
+
+chnclear "MixLFirst"
+chnclear "MixRFirst"
+chnclear "MixLSecond"
+chnclear "MixRSecond"
+
+; Balance between First and Second sound file.
+; CCW to 12oc: First = 100%, Second = 0-100%
+; 12oc to CW : Second = 100%, First = 100-0%
+
+kFirstSecondBalance_scale scale gkFirstSecondBalance, 2, 0  ;  From 0 to 2
+kFirstSecondBalance portk kFirstSecondBalance_scale, 0.02   ;  Rooms sound files First / Second volume Balance
+
+kFirstBalance  min (2-kFirstSecondBalance), 1
+kSecondBalance min kFirstSecondBalance, 1
+
+aSigFirstL = aSigFirstL * kFirstBalance^2
+aSigFirstR = aSigFirstR * kFirstBalance^2
+
+aSigSecondL = aSigSecondL * kSecondBalance^2
+aSigSecondR = aSigSecondR * kSecondBalance^2
+
+
+; BALANCE ROOMS AND INPUT
+; =========================
+
+; Rooms sound files / Audio Input volume Balance
+kInputRoomsBalance_scale scale gkInputRoomsBalance, 2, 0
+kInputRoomsBalance portk kInputRoomsBalance_scale, 0.02
+
+kRoomsVolume min kInputRoomsBalance, 1
+kInputVolume min (2-kInputRoomsBalance), 1
+
+aSigFirstL = (aSigFirstL * kRoomsVolume)
+aSigFirstR = (aSigFirstR * kRoomsVolume)
+
+aSigSecondL = (aSigSecondL * kRoomsVolume)
+aSigSecondR = (aSigSecondR * kRoomsVolume)
+
+aInputNearL = (aInputNearL * kInputVolume)
+aInputNearR = (aInputNearR * kInputVolume)
+
+aInputFarL = (aInputFarL * kInputVolume)
+aInputFarR = (aInputFarR * kInputVolume)
+
+
+; Create NEAR / FAR signals
+; =========================
+
+; ---- ROOMS
+
+kFirstSecondSwap_port portk gkFirstSecondSwap, 0.02  ;  Swap First and Second (including Input Signal)
+kFirstSecondSwap = kFirstSecondSwap_port
+
+; 0 = First Near / Second Far
+aRoomsNearL sum (aSigFirstL * (1 - kFirstSecondSwap)), (aSigSecondL * kFirstSecondSwap)
+aRoomsNearR sum (aSigFirstR * (1 - kFirstSecondSwap)), (aSigSecondR * kFirstSecondSwap)
+
+; 1 = First Far / Second Near
+aRoomsFarL sum (aSigFirstL * (kFirstSecondSwap)), (aSigSecondL * (1 - kFirstSecondSwap))
+aRoomsFarR sum (aSigFirstR * (kFirstSecondSwap)), (aSigSecondR * (1 - kFirstSecondSwap))
+
+; ---- MIX
+
+kVolumeFactor = 1.0
+
+aSignalNearL sum (aRoomsNearL * kVolumeFactor), (aInputNearL * kVolumeFactor)
+aSignalNearR sum (aRoomsNearR * kVolumeFactor), (aInputNearR * kVolumeFactor)
+
+aSignalFarL sum (aRoomsFarL * kVolumeFactor), (aInputFarL * kVolumeFactor)
+aSignalFarR sum (aRoomsFarR * kVolumeFactor), (aInputFarR * kVolumeFactor)
+
+; ---- BALANCE
+
+kNearFarBalance_scale scale gkNearFarBalance, 2, 0
+kNearFarBalance_port portk kNearFarBalance_scale, 0.02
+
+kNearVolume min (2-kNearFarBalance_port), 1
+kFarVolume  min kNearFarBalance_port, 1
+
+aSignalNearL = (aSignalNearL * kNearVolume)
+aSignalNearR = (aSignalNearR * kNearVolume)
+
+aSignalFarL = (aSignalFarL * kFarVolume)
+aSignalFarR = (aSignalFarR * kFarVolume)
+
+; NEAR effects - no effect
+; =========================
+
+aOutNearL = aSignalNearL
+aOutNearR = aSignalNearR
+
+
+; FAR effects - REVERB
+; =========================
+
+kFarFilterCutoff_pow_2 = gkFarFilterCutoff^2
+kFarFilterCutoff_scale scale kFarFilterCutoff_pow_2, 22000, 2000  ; max, min
+kFarFilterCutoff portk kFarFilterCutoff_scale, 0.02               ; Moog Ladder Cutoff
+
+; Filter applied also on original Far signal ; Future changable
+if (0 == 0) then
+  aSignalFarL moogladder aSignalFarL, kFarFilterCutoff, 0
+  aSignalFarR moogladder aSignalFarR, kFarFilterCutoff, 0
+
+  aFarSendL = aSignalFarL
+  aFarSendR = aSignalFarR
+else
+  aFarSendL moogladder aSignalFarL, kFarFilterCutoff, 0
+  aFarSendR moogladder aSignalFarR, kFarFilterCutoff, 0
+endif
+
+; "If CPU usage goes to 100% at the end of reverb tails, or you get audio glitches in processes that shouldn't use too much CPU, using denorm before the culprit opcode or process might solve the problem."
+; It is recommended to process the input signal(s) with the denorm opcode in order to avoid denormalized numbers which could significantly increase CPU usage in some cases
+
+denorm aFarSendL, aFarSendR
+
+; stuff for reverb
+
+; TODO: remove the ilog stuff and make reverb time from 0 to 1 (?)
+
+kReverbTailTime_port portk gkReverbTailTime, 0.02
+ilogtimemin = log(0.6)
+ilogtimemax = log(1.0)
+kReverbTailTime = exp((sqrt(kReverbTailTime_port) * (ilogtimemax - ilogtimemin)) + ilogtimemin)
+
+if (gkReverbPreDelay == 1) then
+  aFarSendL vdelay aFarSendL, (iMaxPreDelay_ms * 0.999) * kReverbTailTime_port, iMaxPreDelay_ms
+  aFarSendR vdelay aFarSendR, (iMaxPreDelay_ms * 0.999) * kReverbTailTime_port, iMaxPreDelay_ms
+endif
+
+kReverbDamping_port portk gkReverbDamping, 0.02
+
+; SEND TO REVERB, result is full wet signal
+if gkReverbType == 0 then
+
+  kReverbDamping = (kReverbDamping_port^2) * 0.8
+
+  ; Bleed a little from L to R and R to L
+  aOutReverbL, aOutReverbR freeverb (aFarSendL * 0.8) + (aFarSendR * 0.2), (aFarSendR * 0.8) + (aFarSendL * 0.2), kReverbTailTime, (1-kReverbDamping), sr * 2, 0
+
+  aOutReverbL = aOutReverbL * 1.5
+  aOutReverbR = aOutReverbR * 1.5
+else
+  ilogdampmin = log(200.0)
+  ilogdampmax = log(15000.0)
+  kReverbDamping = exp(kReverbDamping_port * (ilogdampmax - ilogdampmin) + ilogdampmin)
+
+  aOutReverbL, aOutReverbR reverbsc (aFarSendL * 0.8), (aFarSendR * 0.8), kReverbTailTime, kReverbDamping, sr, 0.2
+endif
+
+kWetDryMix portk gkReverbWetDry, 0.02
+
+aOutFarL sum (aOutReverbL * kWetDryMix), (aSignalFarL * (1 - kWetDryMix))
+aOutFarR sum (aOutReverbR * kWetDryMix), (aSignalFarR * (1 - kWetDryMix))
+
+
+; ROTATE
+; =========================
+
+if gkNearFarRotateOnOff == 0 then
+  ;; use 0.5 for 'half circle', 1 for 1 complete circle, use 2 for two complete circles
+  kNearFarRotateCircle = 1
+
+  ;; When you got to the 'far edge' of the dial, swap the rotation when you go back, so it looks like you are still turning around even you rotate the knob back
+
+  kNearFarRotateEdge = 0.025
+
+  if gkNearFarRotateSwap == 1 && kSwapAllow == 1 && (gkNearFarRotate < kNearFarRotateEdge || gkNearFarRotate > (1-kNearFarRotateEdge)) then
+    kSwap = (kSwap == 1 ? 0 : 1)
+    kSwapAllow = 0
+  endif
+
+  kNearFarRotateEdge = 0.05   ; You must rotate enough to arm the kSwapAllow again
+  if (gkNearFarRotate > kNearFarRotateEdge && gkNearFarRotate < (1-kNearFarRotateEdge)) then
+    kSwapAllow = 1
+  endif
+
+  kNearFarRotate_scale scale gkNearFarRotate, (kNearFarRotateCircle*2) + kSwap, 0 + kSwap
+
+  kNearFarRotate_sin_scale = sin($M_PI * kNearFarRotate_scale)
+  kNearFarRotate_sin_port portk kNearFarRotate_sin_scale, 0.02
+
+  kNearFarRotate_sin_max max 0, kNearFarRotate_sin_port
+  kNearFarRotate_sin_min min 0, kNearFarRotate_sin_port
+
+  kVolumeFactor = 1
+
+  aOutNearL sum ((aOutNearL * (1 + kNearFarRotate_sin_min)) * kVolumeFactor), ((aOutNearR * (0 + kNearFarRotate_sin_max)) * kVolumeFactor)
+  aOutNearR sum ((aOutNearL * (0 - kNearFarRotate_sin_min)) * kVolumeFactor), ((aOutNearR * (1 - kNearFarRotate_sin_max)) * kVolumeFactor)
+
+  aOutFarL  sum ((aOutFarL  * (1 - kNearFarRotate_sin_max)) * kVolumeFactor), ((aOutFarR  * (0 - kNearFarRotate_sin_min)) * kVolumeFactor)
+  aOutFarR  sum ((aOutFarL  * (0 + kNearFarRotate_sin_max)) * kVolumeFactor), ((aOutFarR  * (1 + kNearFarRotate_sin_min)) * kVolumeFactor)
+endif
+
+; Add a small (natural) Left/Right bleed, also Near/Far rotation won't be to discrete.
+aOutSignalNearL sum (aOutNearL * 0.9), (aOutFarL * 0.1)
+aOutSignalNearR sum (aOutNearR * 0.9), (aOutFarR * 0.1)
+
+aOutSignalFarL sum (aOutNearL * 0.1), (aOutFarL * 0.9)
+aOutSignalFarR sum (aOutNearR * 0.1), (aOutFarR * 0.9)
+
+
+; OUTPUT
+; =========================
+
+kVolumeFactor = 0.8   ; adding amplitudes simply together with '1.0x' their original amplitiude will introduce clipping
+
+aOutL sum (aOutSignalNearL * kVolumeFactor), (aOutSignalFarL * kVolumeFactor)
+aOutR sum (aOutSignalNearR * kVolumeFactor), (aOutSignalFarR * kVolumeFactor)
+
+kOutputGain_scale scale gkOutputGain, 2, 0
+kOutputGain portk (kOutputGain_scale^2), 0.02
+
+outs aOutL * kOutputGain, aOutR * kOutputGain
+
+
+; END-OF-LOOP PULSE
+; =========================
+
+kPulseClockMode = gkPulseClockMode                ; Off: Clock of shortest sound file, start on loop, On: Random pulse on restart of any sound file loop
+kPulseMode = gkPulseMode                          ; Off: Trigger/Gate at start, On: Two short pulses at begin and end
+
+; Determine Pulse Length and Clock Divider
+; ----------------------------------------
+
+if (kPulseClockMode == 1) then
+  ; Clock divider
+  kPulseDivider scale gkPulseLength, 0, log2(iClockPulseAmount)
+  kPulseDivider = 2^round(kPulseDivider)
+  kPulseLength = kMinPulseTime_ms
+else
+  ; Random pulse
+  kPulseDivider = iClockPulseAmount
+  kPulseLength_scale scale gkPulseLength, 1, 0
+  kPulseLength max kMinPulseTime_ms, (((kPulseLength_slope^abs(kPulseLength_scale))-1)/(kPulseLength_slope-1))*kMaxPulseTime_ms
+endif
+
+
+; Lower kPulseTime
+; --------------------------------------------------
+
+kPulseTime = (kPulseTime > 0 ? kPulseTime - (1000/kr) : 0)              ; subtract (1000/kr) milliseconds
+kPulseTime = (kPulseTime < 0 ? 0 : kPulseTime)                          ; can't be lower than 0
+kPulseTime = (kPulseTime > kPulseLength ? kPulseLength : kPulseTime)    ; also when the pulse length has been shortend, compare it with the current pulse time and adjust
+
+
+; kPulseBackoffTime calculation
+; --------------------------------------------------
+
+if (kPulseClockMode == 0) then
+  kPulseBackoffTime = (kPulseBackoffTime > 0 ? kPulseBackoffTime - (1000/kr) : 0)             ; subtract (1000/kr) milliseconds
+  kPulseBackoffTime = (kPulseBackoffTime < 0 ? 0 : kPulseBackoffTime)                         ; can't be lower than 0
+  kPulseBackoffTime = (kPulseBackoffTime > kPulseLength ? kPulseLength : kPulseBackoffTime)   ; also when the pulse length has been shortend, compare it with the current backoff time and adjust
+
+  ; kPulseBackoffTime_stage
+  ; -------------------------
+
+  if (kPulseBackoffTime <= 0) then                    ; if backoff time is up
+    if (kPulseBackoffTime_stage == 1) then            ;   if it was stage 1 (high backoff)
+      kPulseBackoffTime_stage = 2                     ;     make it stage 2 (low backoff)
+      kPulseBackoffTime = kPulseLength                ;     set the backoff time again
+      if (kPulseMode == 1) then                       ;     if it was mode 1
+        kPulseTime = kMinPulseTime_ms                 ;       set the hardware trigger out to pulse time (end trigger)
+      endif
+    elseif (kPulseBackoffTime_stage == 2) then        ;   if it was stage 2 (end backoff)
+      kPulseBackoffTime_stage = 0                     ;     make it stage 0 (no backoff)
+      kPulseBackoffTime = 0                           ;     set the backoff time to 0
+    endif
+  endif
+else
+  kPulseBackoffTime = 0
+endif
+
+
+; Sense a clock or loop restart trigger
+; --------------------------------------------------
+
+kLoopRestart trigger gkLoopRestart, 0.5, 0              ; sense the gkLoopRestart went high
+kFileShortestEnded trigger gkFileShortestEnded, 0.5, 0  ; sense the gkFileShortestEnded went high
+kClockPulse trigger gkClockPulse, 0.5, 0                ; sense the gkClockPulse went high
+
+if (kPulseClockMode == 1) then
+  if (kClockPulse == 1) then
+    if (kFileShortestEnded == 1) then     ; the shortest file relooped, reset the clock pulse count
+      kClockPulseCount = 0
+    else
+      kClockPulseCount = kClockPulseCount < (iClockPulseAmount-1) ? kClockPulseCount+1 : (iClockPulseAmount-1)  ; failsafe, not allowed to go higher than (iClockPulseAmount-1) , (kClockPulseCount += 1)
+    endif
+    if ((kClockPulseCount % kPulseDivider) == 0) then   ; check against clock devider if a pulse must be triggered
+      kPulseTrigger = 1
+    endif
+  endif
+else ; (kPulseClockMode == 0)
+  if (kLoopRestart == 1) then             ; when there is a Loop restart
+    if (floor(rnd(gkNumRooms)) == 0) then
+      kPulseTrigger = 1                   ; trigger when it's 1 in #room chance
+    endif
+  endif
+endif
+
+
+; Process pulse
+; -------------------------
+
+if (kPulseBackoffTime == 0) && (kPulseTrigger == 1) then                          ; also a kPulseTrigger is fired when the sounds start first time
+  if (kPulseClockMode == 1) then
+    kPulseTime = kMinPulseTime_ms                                                 ; set the hardware trigger out to minimum pulse time
+  endif
+
+  if (kPulseClockMode == 0) then
+    if (kPulseMode == 1) then                                                     ;   if it was mode 1
+      kPulseTime = kMinPulseTime_ms                                               ;     set the hardware trigger out to minimum pulse time
+    else                                                                          ;   otherwise
+      kPulseTime = kPulseLength                                                   ;     set the hardware trigger out to dailed in pulse time
+    endif
+
+    kPulseBackoffTime_stage = 1                                                   ;   BackoffTime_stage = 1 (high pulse)
+    kPulseBackoffTime = kPulseLength
+  endif
+
+;   ; Emulator debugging, there is no Pulse indication in the emulator
+;     kInstrTime timeinsts
+;     printks2 "Pulse on at %f seconds\n", kInstrTime
+;     printks2 "Sound file %d restarted\n", gkLoopRestart
+;     printks2 "Pulse time %d\n", kPulseTime
+;   ; Emulator debugging, there is no Pulse indication
+endif
+
+;printks2 "kPulseTime %d\n", kPulseTime                            ; visualize kPulseTime
+;printks2 "kPulseBackoffTime_stage %d\n", kPulseBackoffTime_stage  ; visualize kPulseBackoffTime_stage
+;printks2 "kPulseBackoffTime %d\n", kPulseBackoffTime              ; visualize kPulseBackoffTime
+
+gkeol = kPulseTime      ; set the hardware trigger out to pulse time
+
+
+; Reset pulse counters
+; -------------------------
+
+gkLoopRestart = 0       ; arm the loop restart trigger again
+kLoopRestart = 0        ; arm the loop restart trigger again
+gkFileShortestEnded = 0 ; arm the end of shortest file trigger again
+kFileShortestEnded = 0  ; arm the end of shortest file trigger again
+gkClockPulse = 0        ; arm the clock pulse trigger again
+kClockPulse = 0         ; arm the clock pulse trigger again
+
+kPulseTrigger = 0
+
+kStart = 0              ; First cycle is over (instrument event start)
+endin ; instr #1
+
+; --------------------------------------------------------------------------------------------------
+
+instr 10
+  ;; LPOSCIL - with looping and high precision - start 0, end 0 = loop whole file
+
+  kaLoopPositionValue init 0    ; a value of 0 will also create a trigger as the start of play
+
+  iInstrDuration = p3
+  iRoom = p4
+  iRoomSoundFile = p5
+  iRoomSoundFileFirstSecond = p6
+
+  kPitchChange_scale scale gkPitchChange, 2, -3
+  kPitch pow 2, kPitchChange_scale
+
+  kRoom_amplitude = gipeak[iRoomSoundFile] * gkRoom_amp_factor
+  aSigL lposcil kRoom_amplitude, kPitch, 0, 0, giFileIdx_left_offset + iRoomSoundFile
+  if gichn[iRoomSoundFile] == 2 then
+    aSigR lposcil kRoom_amplitude, kPitch, 0, 0, giFileIdx_rght_offset + iRoomSoundFile
+  else
+    aSigR = aSigL
+  endif
+
+  if iRoomSoundFileFirstSecond == 1 then
+    chnmix aSigL * gkRoomVolArr[iRoom], "MixLFirst"
+    chnmix aSigR * gkRoomVolArr[iRoom], "MixRFirst"
+  else
+    chnmix aSigL * gkRoomVolArr[iRoom], "MixLSecond"
+    chnmix aSigR * gkRoomVolArr[iRoom], "MixRSecond"
+  endif
+
+  ; End of loop detection
+  aLoopPosition lposcil 1, kPitch, 0, 0, giFileIdx_trig_offset + iRoomSoundFile
+  kaLoopPositionValue_old = kaLoopPositionValue
+  kaLoopPositionValue = k(aLoopPosition)
+  if (kaLoopPositionValue_old < kaLoopPositionValue) then     ; if the kaLoopPositionValue changed from low(0) to high(1 or 2), there was a pulse
+    if (kaLoopPositionValue > 1.5) then                       ; there is a pulse with value 2 signaling the begin of a soundfile
+      gkLoopRestart = iRoomSoundFile + 1
+      if (iRoomSoundFile == giFileLenMinIdx) then
+        gkFileShortestEnded = 1
+      endif
+    endif
+    if (iRoomSoundFile == giFileLenMinIdx) then               ; only when it's the 'clock' track, there is a clock pulse
+      gkClockPulse = 1
+    endif
+  endif
+
+endin ; instr #10
