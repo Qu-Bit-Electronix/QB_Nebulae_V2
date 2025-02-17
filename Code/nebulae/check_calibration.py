@@ -21,14 +21,12 @@ class CalibrationUi(object):
     """Basic class containing a frame counter, and some methods for updating the state"""
 
     def __init__(self):
-        self.tick_cnt = 0
         self.state = CalibrationState.AWAITING_1V
         self.speed_prev = False
         self.pitch_prev = False
         self.leds = leddriver.LedDriver()
         self.ignore_first_speed = True
         self.transition_hooks = {}
-        self.last_draw = time.time()
 
     def set_hook(self, state, callback):
         """registers a callback for a specific state"""
@@ -60,13 +58,10 @@ class CalibrationUi(object):
         # Calculate elapsed time and use a 1-second (30 tick) period
         elapsed = now - self.start_time
         pos = (elapsed % 1.0)  # cycle duration is 1 second
-
-        self.leds.update()
-        self.leds.set_rgb("speed_neg", purple.red(), purple.green(), purple.blue(), pos)
-        self.leds.set_rgb("speed_pos", purple.red(), purple.green(), purple.blue(), 1.0 - pos)
-
         blink = 1.0 if pos > 0.5 else 0.0
 
+        self.leds.set_rgb("speed_neg", purple.red(), purple.green(), purple.blue(), pos)
+        self.leds.set_rgb("speed_pos", purple.red(), purple.green(), purple.blue(), 1.0 - pos)
         if self.state == CalibrationState.AWAITING_1V:
             self.leds.set_rgb("pitch_neg", purple.red(), purple.green(), purple.blue(), blink)
             self.leds.set_rgb("pitch_pos", purple.red(), purple.green(), purple.blue(), 0.0)
@@ -76,9 +71,8 @@ class CalibrationUi(object):
         elif self.state == CalibrationState.DONE:
             self.leds.set_rgb("pitch_neg", green.red(), green.green(), green.blue(), 1.0)
             self.leds.set_rgb("pitch_pos", green.red(), green.green(), green.blue(), 1.0)
+        self.leds.update()
 
-        # No longer using an internal tick counter
-        self.last_draw = now
 
 
 def launch_bootled():
@@ -99,6 +93,7 @@ def start_process(func, interval):
             start = time.time()
             func()
             elapsed = time.time() - start
+            print(elapsed)
             time.sleep(max(0, interval - elapsed))
 
     p = Process(target=loop)
@@ -143,7 +138,7 @@ elif speed_click.state() == True or arg == 'force-voct':
     ui.set_hook(CalibrationState.DONE, lambda: collector.collect_v3_voct_and_store())
 
     # thread = start_thread(ui.tick, 0.033)
-    process = start_process(ui.tick, 0.033)
+    process = start_process(ui.tick, 0.066)
     while not done_running:
         speed_click.update()
         pitch_click.update()
