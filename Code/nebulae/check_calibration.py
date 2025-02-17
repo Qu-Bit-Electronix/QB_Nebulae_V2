@@ -143,7 +143,7 @@ elif speed_click.state() == True:
             ui.tick()
         if ui.state == CalibrationState.EXIT:
             done_running = True
-    print '1V/Oct Manual Calibration Complete!
+    print '1V/Oct Manual Calibration Complete!'
 else:
     print 'Skipping Calibration'
 kill_bootled()
