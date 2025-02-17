@@ -116,6 +116,7 @@ class Nebulae(object):
         new_instr = None
         request = False
         if self.first_run == False:
+            print("RESTORING ALT SETTINGS TO DEFAULTS")
             self.c_handle.restoreAltToDefault()
         while (self.pt.status() == 0): # Run a loop to poll for messages, and handle the UI.
             self.ui.update()

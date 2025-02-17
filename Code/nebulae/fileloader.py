@@ -30,12 +30,12 @@ class FileLoader(object):
         self.led_process = None
 
     def update(self):
-        if self.currentState < self.numStates: 
-          # do state step 
+        if self.currentState < self.numStates:
+          # do state step
           if self.currentState != "idling":
               self.stateFunctions[self.currentState]
               self.currentState += 1
-              
+
     def reload(self):
         if neb_globals.remount_fs is True:
             os.system("sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh rw")
@@ -85,7 +85,7 @@ class FileLoader(object):
             self.mount()
             if self.isUSBMounted():
                 cmd = "cp " + filepath + " " + fileDir
-                os.system(cmd) 
+                os.system(cmd)
                 self.umount()
             if neb_globals.remount_fs is True:
                 os.system("sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh ro")
