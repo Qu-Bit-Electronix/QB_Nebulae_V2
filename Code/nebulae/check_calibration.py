@@ -7,7 +7,8 @@ import sys
 import time
 import leddriver
 import neb_globals
-import threading
+#import threading
+from multiprocessing import Process
 
 class CalibrationState(object):
     __slots__ = []
@@ -92,37 +93,45 @@ def kill_bootled():
     os.system(cmd)
 
 
-class RepeatedTimer(threading.Thread):
-    def __init__(self, func, interval):
-        threading.Thread.__init__(self)
-        self.func = func
-        self.interval = interval
-        self.running = True
-        self.daemon = True  # Ensures the thread exits when the main program does
+# class RepeatedTimer(threading.Thread):
+#     def __init__(self, func, interval):
+#         threading.Thread.__init__(self)
+#         self.func = func
+#         self.interval = interval
+#         self.running = True
+#         self.daemon = True  # Ensures the thread exits when the main program does
 
-    # def run(self):
-    #     while self.running:
-    #         start_time = time.time()
-    #         self.func()
-    #         elapsed = time.time() - start_time
-    #         time.sleep(max(0, self.interval - elapsed))  # Maintain consistent timing
+#     def run(self):
+#         next_run = time.time()
+#         while self.running:
+#             self.func()  # Run the function
+#             next_run += self.interval  # Schedule next run
+#             sleep_time = max(0, next_run - time.time())  # Avoid negative sleep times
+#             time.sleep(sleep_time)
 
-    def run(self):
-        next_run = time.time()
-        while self.running:
-            self.func()  # Run the function
-            next_run += self.interval  # Schedule next run
-            sleep_time = max(0, next_run - time.time())  # Avoid negative sleep times
-            time.sleep(sleep_time)
+#     def stop(self):
+#         self.running = False
 
-    def stop(self):
-        self.running = False
+# # Function to start a repeating thread
+# def start_thread(func, interval):
+#     thread = RepeatedTimer(func, interval)
+#     thread.start()
+#     return thread
 
-# Function to start a repeating thread
-def start_thread(func, interval):
-    thread = RepeatedTimer(func, interval)
-    thread.start()
-    return thread
+def start_process(func, interval):
+    def loop():
+        while True:
+            start = time.time()
+            func()
+            elapsed = time.time() - start
+            time.sleep(max(0, interval - elapsed))
+
+    p = Process(target=loop)
+    p.daemon = True
+    p.start()
+    return p
+
+
 
 
 led_process = None
@@ -161,7 +170,8 @@ elif speed_click.state() == True or arg == 'force-voct':
     ui.set_hook(CalibrationState.AWAITING_3V, lambda: collector.collect_v1_voct())
     ui.set_hook(CalibrationState.DONE, lambda: collector.collect_v3_voct_and_store())
 
-    thread = start_thread(ui.tick, 0.033)
+    # thread = start_thread(ui.tick, 0.033)
+    process = start_process(ui.tick, 0.033)
     while not done_running:
         speed_click.update()
         pitch_click.update()
@@ -171,7 +181,8 @@ elif speed_click.state() == True or arg == 'force-voct':
             ui.inc_state()
         if ui.state == CalibrationState.EXIT:
             done_running = True
-    thread.stop_thread()
+    #thread.stop_thread()
+    process.terminate()
     print '1V/Oct Manual Calibration Complete!'
 else:
     print 'Skipping Calibration'
