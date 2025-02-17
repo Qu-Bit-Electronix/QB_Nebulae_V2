@@ -140,7 +140,8 @@ elif speed_click.state() == True:
         if now - last_run > 0.33:
             speed_click.update()
             pitch_click.update()
-            ui.tick()
+            ui.tick(speed_click.state(), pitch_click.state())
+        now = time.time()
         if ui.state == CalibrationState.EXIT:
             done_running = True
     print '1V/Oct Manual Calibration Complete!'
