@@ -18,7 +18,6 @@ class CalibrationUi(object):
     """Basic class containing a frame counter, and some methods for updating the state"""
 
     def __init__(self):
-        self.transition_hooks
         self.tick_cnt = 0
         self.state = CalibrationState.AWAITING_1V
         self.speed_prev = False
