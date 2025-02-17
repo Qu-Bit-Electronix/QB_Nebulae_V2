@@ -272,7 +272,7 @@ class HybridData(object):
             temp_analog = ((1.0 - (temp_code / 4095.0)) * self.range) + self.minimum
             #temp_code = self.mcp_cv.read_adc(self.channel) >> 3
             #temp_analog = ((1.0 - (temp_code / 511.0)) * self.range) + self.minimum
-            temp_analog *= self.scaling
+            # temp_analog *= self.scaling # Moved scaling to the output
             self.raw_cv = temp_analog
         else:
             temp_analog = 0.0
@@ -355,7 +355,7 @@ class HybridData(object):
         return self.raw_cv
 
     def getCVValue(self):
-        return self.raw_cv - self.offset
+        return (self.raw_cv * self.scaling) - self.offset
 
 
 
@@ -458,10 +458,10 @@ class ControlChannel(object):
             self.setCVOffset(new_offset)
         if self.name == "pitch":
             voct_offset = self.gatherOffset("pitch_voct_offset")
-            voct_scale = self.gatherOffset("pitch_voct_scal")
+            voct_scale = self.gatherOffset("pitch_voct_scale")
             if voct_scale < 1.0: # Was not calibrated..
                 voct_scale = 60.0
-            print "cal values:\t" + voct_offset + '\t' + voct_scale
+            print "cal values:\t" + str(voct_offset) + '\t' + str(voct_scale)
             # Normalize the cal-data presented in MIDI note numbers to 0-1
             self.setCVOffset(voct_offset / 60.0)
             self.setCVScaling(voct_scale / 60.0)
