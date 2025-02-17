@@ -6,6 +6,7 @@ import calibration_collector
 import sys
 import time
 import leddriver
+import neb_globals
 
 class CalibrationState(object):
     __slots__ = []
