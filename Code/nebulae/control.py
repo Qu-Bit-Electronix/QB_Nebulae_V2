@@ -282,13 +282,13 @@ class HybridData(object):
             temp_analog = (temp_analog * 2.0) - 1.0
             self.raw_cv = temp_analog
         if (self.channel >= 0):
-            temp_rnd = temp_analog
+            temp_rnd = temp_analog * self.scaling
             self.filtVal += self.filtCoeff * (temp_rnd - self.filtVal)
             # Apply scale and offset from calibration..
             if self.name == "pitch" and self.new_calibration:
-                self.analogVal = self.offset + (self.filtVal * self.scaling)
+                self.analogVal = self.offset + self.filtVal
             else:
-                self.analogVal = (self.filtVal * self.scaling) - self.offset
+                self.analogVal = self.filtVal - self.offset
             self.hystVal = addHysteresis(self.hystVal, self.analogVal, hyst_amt)
             temp = self.hystVal + self.staticVal
             temp_rnd = round(temp, 4)
