@@ -461,15 +461,14 @@ class ControlChannel(object):
             new_offset = self.gatherOffset(self.name)
             #print name + ": new offset = " + str(new_offset)
             self.setCVOffset(new_offset)
-        if self.name == "pitch":
+
+        # Use new 1V/oct calibration if available
+        has_voct_cal = self.hasOffset("pitch_voct_offset") and self.hasOffset("pitch_voct_scale")
+        if self.name == "pitch" and has_voct_cal:
             voct_offset = self.gatherOffset("pitch_voct_offset")
             voct_scale = self.gatherOffset("pitch_voct_scale")
-            if voct_scale < 1.0: # Was not calibrated..
-                voct_scale = 60.0
-            print "cal values:\t" + str(voct_offset) + '\t' + str(voct_scale)
-            # Normalize the cal-data presented in MIDI note numbers to 0-1
-            self.setCVOffset(voct_offset / 60.0)
-            self.setCVScaling(voct_scale / 60.0)
+            self.setCVOffset(voct_offset)
+            self.setCVScaling(voct_scale)
 
     def setValue(self, val):
         self.input.setValue(val)
@@ -559,6 +558,26 @@ class ControlChannel(object):
             return self.input.getLEDValue()
         else:
             return self.curVal
+
+    def hasOffset(self, name):
+        filepath = '/home/alarm/QB_Nebulae_V2/Code/misc/'
+        filename = 'calibration_data.txt'
+        found = False
+        try:
+            with open(filepath + filename, 'r') as myfile:
+                for line in myfile:
+                    if line.startswith(name):
+                        found = True
+                        datalist = line.split(',')
+                        try:
+                            val = float(datalist[1])
+                        except:
+                            found = False
+                            print 'list value is not a floating point number:' + datalist[1]
+        except:
+            print 'No file: ' + filepath + filename
+        return found
+
 
     def gatherOffset(self, name):
         filepath = '/home/alarm/QB_Nebulae_V2/Code/misc/'

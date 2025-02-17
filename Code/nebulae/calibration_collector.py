@@ -57,8 +57,8 @@ class CalibrationCollector(object):
         delta = self.v3 - self.v1
         if delta == 0.0:
             return
-        scale = 24.0 / delta
-        offset = 12 - scale * self.v1
+        scale = (24.0 / delta) / 60.0
+        offset = (12 - scale * self.v1) / 60.0
         os.system("sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh rw")
         filepath = "/home/alarm/QB_Nebulae_V2/Code/misc/"
         filename = "calibration_data.txt"

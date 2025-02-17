@@ -27,6 +27,7 @@ class CalibrationUi(object):
         self.leds = leddriver.LedDriver()
         self.ignore_first_speed = True
         self.transition_hooks = {}
+        self.state_change_time = time.time()
 
     def set_hook(self, state, callback):
         """registers a callback for a specific state"""
@@ -44,6 +45,7 @@ class CalibrationUi(object):
             self.change_state(CalibrationState.DONE)
         elif self.state == CalibrationState.DONE:
             self.change_state(CalibrationState.EXIT)
+        self.state_change_time = time.time()
 
     def tick(self):
         # update LEDs
@@ -55,10 +57,15 @@ class CalibrationUi(object):
         if not hasattr(self, 'start_time'):
             self.start_time = now
 
+        # Automatically move to exit state 1s after completion of calibration
+        if now - self.state_change_time > 1000 and self.state == CalibrationState.DONE:
+            self.change_state(CalibrationState.EXIT)
+
         # Calculate elapsed time and use a 1-second (30 tick) period
         elapsed = now - self.start_time
         pos = (elapsed % 1.0)  # cycle duration is 1 second
         blink = 1.0 if pos > 0.5 else 0.0
+
 
         self.leds.set_rgb("speed_neg", purple.red(), purple.green(), purple.blue(), pos)
         self.leds.set_rgb("speed_pos", purple.red(), purple.green(), purple.blue(), 1.0 - pos)
@@ -132,7 +139,7 @@ elif speed_click.state() == True or arg == 'force-voct':
             ui.change_state(CalibrationState.EXIT)
         if pitch_click.risingEdge():
             ui.inc_state()
-        if ui.state == CalibrationState.EXIT or ui.state == CalibrationState.DONE:
+        if ui.state == CalibrationState.EXIT:
             done_running = True
         if time.time() > next_run:
             ui.tick()
