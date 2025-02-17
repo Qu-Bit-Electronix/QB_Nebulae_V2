@@ -132,7 +132,7 @@ elif speed_click.state() == True or arg == 'force-voct':
         speed_click.update()
         pitch_click.update()
         if now - last_run > 0.033:
-            ui.tick( pitch_click.risingEdge())
+            ui.tick()
             last_run = now
         if speed_click.risingEdge():
             ui.change_state(CalibrationState.EXIT)
