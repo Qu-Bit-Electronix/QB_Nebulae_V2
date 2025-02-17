@@ -46,14 +46,15 @@ class CalibrationUi(object):
         self.speed_prev = btn_speed
         self.pitch_prev = btn_pitch
 
-        if speed_trig:
-            # Button is held while booting.. to this mode.
-            if self.ignore_first_speed:
-                self.ignore_first_speed = False
-            else:
-                self.state = CalibrationState.EXIT
-                if self.state in self.transition_hooks:
-                    self.transition_hooks[self.state]()
+        # TODO: this needs to wait until a real 0-1 transition
+        # if speed_trig:
+        #     # Button is held while booting.. to this mode.
+        #     if self.ignore_first_speed:
+        #         self.ignore_first_speed = False
+        #     else:
+        #         self.state = CalibrationState.EXIT
+        #         if self.state in self.transition_hooks:
+        #             self.transition_hooks[self.state]()
 
         if pitch_trig:
             if self.state == CalibrationState.AWAITING_1V:
@@ -132,7 +133,7 @@ if pitch_click.state() == True or arg == 'force':
     os.system(cmd)
     if neb_globals.remount_fs is True:
         os.system("sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh ro")
-elif speed_click.state() == True:
+elif speed_click.state() == True or arg == 'force-voct':
     print '1V/Oct Manual Calibration Starting...'
     ui = CalibrationUi()
     now = time.time()
@@ -142,11 +143,12 @@ elif speed_click.state() == True:
     ui.set_hook(CalibrationState.DONE, lambda: collector.collect_v3_voct_and_store())
     while not done_running:
         ## 30Hz loop
+        now = time.time()
         if now - last_run > 0.33:
             speed_click.update()
             pitch_click.update()
             ui.tick(speed_click.state(), pitch_click.state())
-        now = time.time()
+            last_run = now
         if ui.state == CalibrationState.EXIT:
             done_running = True
     print '1V/Oct Manual Calibration Complete!'
