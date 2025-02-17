@@ -89,12 +89,15 @@ def kill_bootled():
 
 def start_process(func, interval):
     def loop():
+        next_run = time.time()
         while True:
             start = time.time()
             func()
-            elapsed = time.time() - start
-            print(elapsed)
-            time.sleep(max(0, interval - elapsed))
+            next_run += interval  # Set the next expected time
+
+            # Active wait until next_run
+            while time.time() < next_run:
+                pass  # Busy wait for ultra-precise timing
 
     p = Process(target=loop)
     p.daemon = True
