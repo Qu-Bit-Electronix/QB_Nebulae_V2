@@ -26,9 +26,9 @@ BUTTON_GPIO_GATE_NONE = 4
 BUTTON_SR_GATE_NONE = 5
 
 def addHysteresis(cur, new, distance):
-    output = cur    
-    if cur + distance < new:    
-        output = new    
+    output = cur
+    if cur + distance < new:
+        output = new
     elif cur - distance > new:
         output = new
     return output
@@ -93,7 +93,7 @@ class AdcData(object):
 
     def clearResistVal(self):
         self.resisting_change = False
-    
+
     def isResisting(self):
         return self.resisting_change
 
@@ -148,7 +148,7 @@ class AdcData(object):
             temp_cv = ((4095.0 - temp_cv_code) - 2047.0) / 2047.0
             self.raw_cv = temp_cv
             temp_cv -= self.cv_offset
-        else: 
+        else:
             temp_cv = 0.0
         self.filtCVVal += self.smoothCoeff * (temp_cv - self.filtCVVal)
         return self.filtCVVal
@@ -160,7 +160,7 @@ class AdcData(object):
             self.raw_pot = temp_pot
             self.filtPotVal += self.smoothCoeff * (temp_pot - self.filtPotVal)
             if self.resisting_change is True:
-                temp_hyst = addHysteresis(self.resist_val, self.raw_pot, 0.1) 
+                temp_hyst = addHysteresis(self.resist_val, self.raw_pot, 0.1)
                 if temp_hyst != self.resist_val:
                     self.resisting_change = False
                     self.resist_val = self.raw_pot
@@ -173,8 +173,8 @@ class AdcData(object):
                     pot = self.static_pot
         else:
             pot = 0.0
-        return pot 
-        
+        return pot
+
 
     def clipControl(self, val):
         if val < self.minimum + (self.hyst_amt * 4):
@@ -182,7 +182,7 @@ class AdcData(object):
         if val > self.maximum - (self.hyst_amt * 4):
             val = self.maximum
         return val
-        
+
     def setCVOffset(self, value):
         self.cv_offset = value
 
@@ -290,19 +290,19 @@ class HybridData(object):
             if self.name == "speed":
                 tolerance = 0.00208 # 1/8 semi-tone = quarter tone tolerance.
                 factors = [0.0, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0]
-                for f in factors: 
-                    factor_val_pos = (f + 4.0) / 8.0 
-                    factor_val_neg = ((-1.0 * f) + 4.0) / 8.0 
+                for f in factors:
+                    factor_val_pos = (f + 4.0) / 8.0
+                    factor_val_neg = ((-1.0 * f) + 4.0) / 8.0
                     if temp_rnd < factor_val_pos + tolerance and temp_rnd > factor_val_pos - tolerance:
                         temp_rnd = factor_val_pos
                     if temp_rnd < factor_val_neg + tolerance and temp_rnd > factor_val_neg - tolerance:
                         temp_rnd = factor_val_neg
             elif self.name == "pitch":
                 tolerance = 0.00208
-                octaves = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]  
+                octaves = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
                 for octave in octaves:
                     if temp_rnd < octave + tolerance and temp_rnd > octave - tolerance:
-                        temp_rnd = octave 
+                        temp_rnd = octave
             if self.stablized is True:
                 if abs(temp_rnd - self.curVal) > 0.005:
                     self.stablized = False
@@ -333,10 +333,13 @@ class HybridData(object):
         #    print "###### SPEEED #######"
         #    print "Val: " + str(self.curVal) + " CV: " + str(self.filtVal) +  " CV Code: " + str(temp_code) + " Scaling: " + str(self.scaling)
         #    print "Cur Max: " + str(self.curMax) + " Cur Min: " + str(self.curMin) + " Noise Range: " + str(noise_range) + " dummy code: " + str(temp_dummy_code) + " diff: " + str(temp_code)
-        return self.curVal 
-    
+        return self.curVal
+
     def setCVOffset(self, value):
         self.offset = value
+
+    def setCVScaling(self, value):
+        self.scaling = value
 
     def setIgnoreHID(self, state):
         self.ignore_enc = state
@@ -354,9 +357,9 @@ class HybridData(object):
     def getCVValue(self):
         return self.raw_cv - self.offset
 
-        
 
-                
+
+
 
 # Single Channel of Return Communication from CSound
 class CommChannel(object):
@@ -403,7 +406,7 @@ class CommChannel(object):
             if self.state == 1:
                 self.state = 0
                 self.csound.setControlChannel(self.name, self.state)
-        
+
 
 # Single Channel of Control Information
 class ControlChannel(object):
@@ -418,7 +421,7 @@ class ControlChannel(object):
         self.csound = csound
         self.name = name
         if self.csound is not None:
-            chn, _ = self.csound.channelPtr(self.name, 
+            chn, _ = self.csound.channelPtr(self.name,
                 ctcsound.CSOUND_CONTROL_CHANNEL | ctcsound.CSOUND_INPUT_CHANNEL)
             self.channel = chn
         else:
@@ -449,10 +452,16 @@ class ControlChannel(object):
         elif (source is "hybrid"):
             self.input = HybridData(data_channel, self.name, minimum, maximum, init_val=self.curVal)
 
-        if self.source == "analog" or self.source == "hybrid": 
+        if self.source == "analog" or self.source == "hybrid":
             new_offset = self.gatherOffset(self.name)
             #print name + ": new offset = " + str(new_offset)
-            self.setCVOffset(new_offset) 
+            self.setCVOffset(new_offset)
+        if self.name == "pitch":
+            voct_offset = self.gatherOffset("pitch_voct_offset")
+            voct_scale = self.gatherOffset("pitch_voct_scal")
+            # Normalize the cal-data presented in MIDI note numbers to 0-1
+            self.setCVOffset(voct_offset / 60.0)
+            self.setCVScaling(voct_scale / 60.0)
 
     def setValue(self, val):
         self.input.setValue(val)
@@ -485,10 +494,14 @@ class ControlChannel(object):
         if self.source == "hybrid":
             val = self.input.getStaticVal()
             return val
-    
+
     def setCVOffset(self, value):
         if self.source == "hybrid" or self.source == "analog":
             self.input.setCVOffset(value)
+
+    def setCVScaling(self, value):
+        if self.source == "hybrid":
+            self.input.setCVScaling(value)
 
     def setIgnoreNextButton(self):
         if self.source == "digital":
@@ -507,7 +520,7 @@ class ControlChannel(object):
             return self.input.isResisting()
         else:
             return False
-        
+
     def hasChanged(self):
         change = self.curVal != self.prevVal
         return change
@@ -547,14 +560,14 @@ class ControlChannel(object):
             with open(filepath + filename, 'r') as myfile:
                 for line in myfile:
                     if line.startswith(name):
-                        datalist = line.split(',')  
+                        datalist = line.split(',')
                         try:
                             val = float(datalist[1])
                         except:
                             print 'list value is not a floating point number:' + datalist[1]
         except:
             print 'No file: ' + filepath + filename
-        return val 
+        return val
 
     def update(self):
         #time.sleep(0.001)
