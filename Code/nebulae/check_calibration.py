@@ -28,6 +28,7 @@ class CalibrationUi(object):
         self.leds = leddriver.LedDriver()
         self.ignore_first_speed = True
         self.transition_hooks = {}
+        self.last_draw = time.time()
 
     def set_hook(self, state, callback):
         """registers a callback for a specific state"""
@@ -47,37 +48,37 @@ class CalibrationUi(object):
             self.change_state(CalibrationState.EXIT)
 
     def tick(self):
-        """
-        increments the ticker, and updates LEDs
-        ideally, this would run at a fixed rate for smooth animations (e.g. 30Hz)
-        """
-
         # update LEDs
         purple = leddriver.Color(511, 0, 4095)
         green = leddriver.Color(0, 4095, 0)
 
-        # Approx 30 frames per second assumed
-        in_frame = self.tick_cnt % 30
-        pos = in_frame / 30.0
+        now = time.time()
+        # Initialize start_time on the first call
+        if not hasattr(self, 'start_time'):
+            self.start_time = now
+
+        # Calculate elapsed time and use a 1-second (30 tick) period
+        elapsed = now - self.start_time
+        pos = (elapsed % 1.0)  # cycle duration is 1 second
 
         self.leds.update()
         self.leds.set_rgb("speed_neg", purple.red(), purple.green(), purple.blue(), pos)
         self.leds.set_rgb("speed_pos", purple.red(), purple.green(), purple.blue(), 1.0 - pos)
-        if pos > 0.5:
-            blink = 1.0
-        else:
-            blink = 0.0
-        if ui.state == CalibrationState.AWAITING_1V:
+
+        blink = 1.0 if pos > 0.5 else 0.0
+
+        if self.state == CalibrationState.AWAITING_1V:
             self.leds.set_rgb("pitch_neg", purple.red(), purple.green(), purple.blue(), blink)
             self.leds.set_rgb("pitch_pos", purple.red(), purple.green(), purple.blue(), 0.0)
-        elif ui.state == CalibrationState.AWAITING_3V:
+        elif self.state == CalibrationState.AWAITING_3V:
             self.leds.set_rgb("pitch_neg", green.red(), green.green(), green.blue(), 1.0)
             self.leds.set_rgb("pitch_pos", purple.red(), purple.green(), purple.blue(), blink)
-        elif ui.state == CalibrationState.DONE:
+        elif self.state == CalibrationState.DONE:
             self.leds.set_rgb("pitch_neg", green.red(), green.green(), green.blue(), 1.0)
             self.leds.set_rgb("pitch_pos", green.red(), green.green(), green.blue(), 1.0)
 
-        self.tick_cnt += 1
+        # No longer using an internal tick counter
+        self.last_draw = now
 
 
 def launch_bootled():
@@ -92,32 +93,6 @@ def kill_bootled():
     cmd = "sudo pkill -1 -f /home/alarm/QB_Nebulae_V2/Code/nebulae/bootleds.py"
     os.system(cmd)
 
-
-# class RepeatedTimer(threading.Thread):
-#     def __init__(self, func, interval):
-#         threading.Thread.__init__(self)
-#         self.func = func
-#         self.interval = interval
-#         self.running = True
-#         self.daemon = True  # Ensures the thread exits when the main program does
-
-#     def run(self):
-#         next_run = time.time()
-#         while self.running:
-#             self.func()  # Run the function
-#             next_run += self.interval  # Schedule next run
-#             sleep_time = max(0, next_run - time.time())  # Avoid negative sleep times
-#             time.sleep(sleep_time)
-
-#     def stop(self):
-#         self.running = False
-
-# # Function to start a repeating thread
-# def start_thread(func, interval):
-#     thread = RepeatedTimer(func, interval)
-#     thread.start()
-#     return thread
-
 def start_process(func, interval):
     def loop():
         while True:
@@ -130,9 +105,6 @@ def start_process(func, interval):
     p.daemon = True
     p.start()
     return p
-
-
-
 
 led_process = None
 
@@ -187,5 +159,4 @@ elif speed_click.state() == True or arg == 'force-voct':
 else:
     print 'Skipping Calibration'
 kill_bootled()
-
 
