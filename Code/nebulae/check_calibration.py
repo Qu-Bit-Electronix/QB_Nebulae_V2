@@ -23,6 +23,7 @@ class CalibrationUi(object):
         self.speed_prev = False
         self.pitch_prev = False
         self.leds = leddriver.LedDriver()
+        self.ignore_first_speed = True
         self.transition_hooks = {}
 
     def set_hook(self, state, callback):
@@ -46,9 +47,13 @@ class CalibrationUi(object):
         self.pitch_prev = btn_pitch
 
         if speed_trig:
-            self.state = CalibrationState.EXIT
-            if self.state in self.transition_hooks:
-                self.transition_hooks[self.state]()
+            # Button is held while booting.. to this mode.
+            if self.ignore_first_speed:
+                self.ignore_first_speed = False
+            else:
+                self.state = CalibrationState.EXIT
+                if self.state in self.transition_hooks:
+                    self.transition_hooks[self.state]()
 
         if pitch_trig:
             if self.state == CalibrationState.AWAITING_1V:
@@ -63,7 +68,7 @@ class CalibrationUi(object):
         green = leddriver.Color(0, 4095, 0)
 
         # Approx 30 frames per second assumed
-        in_frame = tick_cnt % 30
+        in_frame = self.tick_cnt % 30
         pos = in_frame / 30.0
 
         self.leds.update()
@@ -83,7 +88,7 @@ class CalibrationUi(object):
             self.leds.set_rgb("pitch_neg", green.red(), green.green(), green.blue(), 1.0)
             self.leds.set_rgb("pitch_pos", green.red(), green.green(), green.blue(), 1.0)
 
-        tick_cnt += 1
+        self.tick_cnt += 1
 
 
 def launch_bootled():
