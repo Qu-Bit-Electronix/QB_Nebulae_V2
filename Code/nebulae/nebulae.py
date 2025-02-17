@@ -14,7 +14,7 @@ import neb_globals
 cfg_path = "/home/alarm/QB_Nebulae_V2/Code/config/"
 
 debug = True
-debug_controls = True
+debug_controls = False
 
 class Nebulae(object):
 
@@ -115,9 +115,9 @@ class Nebulae(object):
     def run(self):
         new_instr = None
         request = False
-        if self.first_run == False:
-            print("RESTORING ALT SETTINGS TO DEFAULTS")
-            self.c_handle.restoreAltToDefault()
+        # if self.first_run == False:
+        #     print("RESTORING ALT SETTINGS TO DEFAULTS")
+        #     self.c_handle.restoreAltToDefault()
         while (self.pt.status() == 0): # Run a loop to poll for messages, and handle the UI.
             self.ui.update()
             self.c_handle.updateAll()

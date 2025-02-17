@@ -135,8 +135,8 @@ class UserInterface(object):
                     tempidx = self.puredatainstr_fhandle.getIndex(self.controlhandler.currentInstr)
                 self.controlhandler.setInstrSelIdx(tempidx)
                 self.controlhandler.setInstrSelBank(self.controlhandler.currentBank)
-                # self.controlhandler.settings.update(self.now)
-                # self.controlhandler.settings.write()
+                self.controlhandler.settings.update(self.now)
+                self.controlhandler.settings.write()
                 self.reload_flag = True
             elif self.controlhandler.writing_buffer == True:
                 self.animateBufferWrite()
