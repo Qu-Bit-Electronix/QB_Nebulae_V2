@@ -144,7 +144,7 @@ elif speed_click.state() == True or arg == 'force-voct':
     while not done_running:
         ## 30Hz loop
         now = time.time()
-        if now - last_run > 0.33:
+        if now - last_run > 0.033:
             speed_click.update()
             pitch_click.update()
             ui.tick(speed_click.state(), pitch_click.state())
