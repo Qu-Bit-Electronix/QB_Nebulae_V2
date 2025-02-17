@@ -459,6 +459,9 @@ class ControlChannel(object):
         if self.name == "pitch":
             voct_offset = self.gatherOffset("pitch_voct_offset")
             voct_scale = self.gatherOffset("pitch_voct_scal")
+            if voct_scale < 1.0: # Was not calibrated..
+                voct_scale = 60.0
+            print "cal values:\t" + voct_offset + '\t' + voct_scale
             # Normalize the cal-data presented in MIDI note numbers to 0-1
             self.setCVOffset(voct_offset / 60.0)
             self.setCVScaling(voct_scale / 60.0)
