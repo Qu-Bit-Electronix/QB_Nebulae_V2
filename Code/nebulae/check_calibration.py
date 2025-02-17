@@ -7,8 +7,8 @@ import sys
 import time
 import leddriver
 import neb_globals
-#import threading
-from multiprocessing import Process
+# import threading
+# from multiprocessing import Process
 
 class CalibrationState(object):
     __slots__ = []
@@ -87,22 +87,22 @@ def kill_bootled():
     cmd = "sudo pkill -1 -f /home/alarm/QB_Nebulae_V2/Code/nebulae/bootleds.py"
     os.system(cmd)
 
-def start_process(func, interval):
-    def loop():
-        next_run = time.time()
-        while True:
-            start = time.time()
-            func()
-            next_run += interval  # Set the next expected time
+# def start_process(func, interval):
+#     def loop():
+#         next_run = time.time()
+#         while True:
+#             start = time.time()
+#             func()
+#             next_run += interval  # Set the next expected time
 
-            # Active wait until next_run
-            while time.time() < next_run:
-                pass  # Busy wait for ultra-precise timing
+#             # Active wait until next_run
+#             while time.time() < next_run:
+#                 pass  # Busy wait for ultra-precise timing
 
-    p = Process(target=loop)
-    p.daemon = True
-    p.start()
-    return p
+#     p = Process(target=loop)
+#     p.daemon = True
+#     p.start()
+#     return p
 
 led_process = None
 
@@ -140,8 +140,9 @@ elif speed_click.state() == True or arg == 'force-voct':
     ui.set_hook(CalibrationState.AWAITING_3V, lambda: collector.collect_v1_voct())
     ui.set_hook(CalibrationState.DONE, lambda: collector.collect_v3_voct_and_store())
 
-    # thread = start_thread(ui.tick, 0.033)
-    process = start_process(ui.tick, 0.066)
+    period = 0.016 # 60Hz
+    next_run = time.time()
+
     while not done_running:
         speed_click.update()
         pitch_click.update()
@@ -151,8 +152,9 @@ elif speed_click.state() == True or arg == 'force-voct':
             ui.inc_state()
         if ui.state == CalibrationState.EXIT:
             done_running = True
-    #thread.stop_thread()
-    process.terminate()
+        if time.time() > next_run:
+            ui.tick()
+            next_run += period
     print '1V/Oct Manual Calibration Complete!'
 else:
     print 'Skipping Calibration'
