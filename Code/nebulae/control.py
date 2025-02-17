@@ -283,7 +283,11 @@ class HybridData(object):
         if (self.channel >= 0):
             temp_rnd = temp_analog
             self.filtVal += self.filtCoeff * (temp_rnd - self.filtVal)
-            self.analogVal = self.filtVal - self.offset
+            # Apply scale and offset from calibration..
+            if self.name == "pitch":
+                self.analogVal = self.offset + (self.filtVal * self.scaling)
+            else:
+                self.analogVal = (self.filtVal * self.scaling) - self.offset
             self.hystVal = addHysteresis(self.hystVal, self.analogVal, hyst_amt)
             temp = self.hystVal + self.staticVal
             temp_rnd = round(temp, 4)
@@ -355,8 +359,8 @@ class HybridData(object):
         return self.raw_cv
 
     def getCVValue(self):
+        ## Note to future self: this does not get used anywhere...
         return (self.raw_cv * self.scaling) - self.offset
-        # return self.offset + (self.scaling * self.raw_cv)
 
 
 
@@ -457,15 +461,15 @@ class ControlChannel(object):
             new_offset = self.gatherOffset(self.name)
             #print name + ": new offset = " + str(new_offset)
             self.setCVOffset(new_offset)
-        # if self.name == "pitch":
-        #     voct_offset = self.gatherOffset("pitch_voct_offset")
-        #     voct_scale = self.gatherOffset("pitch_voct_scale")
-        #     if voct_scale < 1.0: # Was not calibrated..
-        #         voct_scale = 60.0
-        #     print "cal values:\t" + str(voct_offset) + '\t' + str(voct_scale)
-        #     # Normalize the cal-data presented in MIDI note numbers to 0-1
-        #     self.setCVOffset(voct_offset / 60.0)
-        #     self.setCVScaling(voct_scale / 60.0)
+        if self.name == "pitch":
+            voct_offset = self.gatherOffset("pitch_voct_offset")
+            voct_scale = self.gatherOffset("pitch_voct_scale")
+            if voct_scale < 1.0: # Was not calibrated..
+                voct_scale = 60.0
+            print "cal values:\t" + str(voct_offset) + '\t' + str(voct_scale)
+            # Normalize the cal-data presented in MIDI note numbers to 0-1
+            self.setCVOffset(voct_offset / 60.0)
+            self.setCVScaling(voct_scale / 60.0)
 
     def setValue(self, val):
         self.input.setValue(val)
