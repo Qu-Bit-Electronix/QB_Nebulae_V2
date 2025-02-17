@@ -263,6 +263,7 @@ class HybridData(object):
         self.last_in = 0.0
         self.staticVal = init_val
         self.ignore_enc = False
+        self.new_calibration = False
 
     def getValue(self):
         #hyst_amt = 0.0025
@@ -284,7 +285,7 @@ class HybridData(object):
             temp_rnd = temp_analog
             self.filtVal += self.filtCoeff * (temp_rnd - self.filtVal)
             # Apply scale and offset from calibration..
-            if self.name == "pitch":
+            if self.name == "pitch" and self.new_calibration:
                 self.analogVal = self.offset + (self.filtVal * self.scaling)
             else:
                 self.analogVal = (self.filtVal * self.scaling) - self.offset
@@ -343,6 +344,13 @@ class HybridData(object):
         self.offset = value
 
     def setCVScaling(self, value):
+        """
+        This is only used with the new calibration added for pitch/voct
+
+        So, this will _also_ tell the class to use the new calibration scheme
+        which handles its offset in the opposite direction.
+        """
+        self.new_calibration = True
         self.scaling = value
 
     def setIgnoreHID(self, state):
