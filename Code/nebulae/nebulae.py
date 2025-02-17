@@ -14,7 +14,7 @@ import neb_globals
 cfg_path = "/home/alarm/QB_Nebulae_V2/Code/config/"
 
 debug = True
-debug_controls = False
+debug_controls = True
 
 class Nebulae(object):
 
