@@ -35,34 +35,19 @@ class CalibrationUi(object):
             self.transition_hooks[new_state]()
         self.state = new_state
 
-    def tick(self, btn_speed, btn_pitch):
+    def inc_state(self):
+        if self.state == CalibrationState.AWAITING_1V:
+            self.change_state(CalibrationState.AWAITING_3V)
+        elif self.state == CalibrationState.AWAITING_3V:
+            self.change_state(CalibrationState.DONE)
+        elif self.state == CalibrationState.DONE:
+            self.change_state(CalibrationState.EXIT)
+
+    def tick(self):
         """
         increments the ticker, and updates LEDs
         ideally, this would run at a fixed rate for smooth animations (e.g. 30Hz)
         """
-        # Handle updating state
-        speed_trig = btn_speed and self.speed_prev
-        pitch_trig = btn_pitch and self.pitch_prev
-        self.speed_prev = btn_speed
-        self.pitch_prev = btn_pitch
-
-        # TODO: this needs to wait until a real 0-1 transition
-        # if speed_trig:
-        #     # Button is held while booting.. to this mode.
-        #     if self.ignore_first_speed:
-        #         self.ignore_first_speed = False
-        #     else:
-        #         self.state = CalibrationState.EXIT
-        #         if self.state in self.transition_hooks:
-        #             self.transition_hooks[self.state]()
-
-        if pitch_trig:
-            if self.state == CalibrationState.AWAITING_1V:
-                self.change_state(CalibrationState.AWAITING_3V)
-            elif self.state == CalibrationState.AWAITING_3V:
-                self.change_state(CalibrationState.DONE)
-            elif self.state == CalibrationState.DONE:
-                self.change_state(CalibrationState.EXIT)
 
         # update LEDs
         purple = leddriver.Color(511, 0, 4095)
@@ -144,11 +129,15 @@ elif speed_click.state() == True or arg == 'force-voct':
     while not done_running:
         ## 30Hz loop
         now = time.time()
+        speed_click.update()
+        pitch_click.update()
         if now - last_run > 0.033:
-            speed_click.update()
-            pitch_click.update()
-            ui.tick(speed_click.state(), pitch_click.state())
+            ui.tick( pitch_click.risingEdge())
             last_run = now
+        if speed_click.risingEdge():
+            ui.change_state(CalibrationState.EXIT)
+        if pitch_click.risingEdge():
+            ui.inc_state()
         if ui.state == CalibrationState.EXIT:
             done_running = True
     print '1V/Oct Manual Calibration Complete!'
