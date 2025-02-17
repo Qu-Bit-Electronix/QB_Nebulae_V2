@@ -48,9 +48,11 @@ class CalibrationCollector(object):
         os.system("sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh ro")
 
     def collect_v1_voct(self):
+        self.ch.updateAll()
         self.v1 = self.ch.channeldict["pitch"].getRawCVValue()
 
     def collect_v3_voct_and_store(self):
+        self.ch.updateAll()
         self.v3 = self.ch.channeldict["pitch"].getRawCVValue()
         delta = self.v3 - self.v1
         if delta == 0.0:
