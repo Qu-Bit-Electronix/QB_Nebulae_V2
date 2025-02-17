@@ -355,7 +355,8 @@ class HybridData(object):
         return self.raw_cv
 
     def getCVValue(self):
-        return (self.raw_cv * self.scaling) - self.offset
+        # return (self.raw_cv * self.scaling) - self.offset
+        return self.offset + (self.scaling * self.raw_cv)
 
 
 

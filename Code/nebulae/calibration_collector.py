@@ -62,7 +62,7 @@ class CalibrationCollector(object):
         os.system("sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh rw")
         filepath = "/home/alarm/QB_Nebulae_V2/Code/misc/"
         filename = "calibration_data.txt"
-        with open(filepath + filename, "w+") as myfile:
+        with open(filepath + filename, "a") as myfile:
             l1 = ",".join(["pitch_voct_scale", str(scale), "\n"])
             l2 = ",".join(["pitch_voct_offset", str(offset), "\n"])
             myfile.write(l1)
