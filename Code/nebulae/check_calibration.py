@@ -7,6 +7,7 @@ import sys
 import time
 import leddriver
 import neb_globals
+import threading
 
 class CalibrationState(object):
     __slots__ = []
@@ -91,6 +92,30 @@ def kill_bootled():
     os.system(cmd)
 
 
+class RepeatedTimer(threading.Thread):
+    def __init__(self, func, interval):
+        threading.Thread.__init__(self)
+        self.func = func
+        self.interval = interval
+        self.running = True
+        self.daemon = True  # Ensures the thread exits when the main program does
+
+    def run(self):
+        while self.running:
+            start_time = time.time()
+            self.func()
+            elapsed = time.time() - start_time
+            time.sleep(max(0, self.interval - elapsed))  # Maintain consistent timing
+
+    def stop(self):
+        self.running = False
+
+# Function to start a repeating thread
+def start_thread(func, interval):
+    thread = RepeatedTimer(func, interval)
+    thread.start()
+    return thread
+
 
 led_process = None
 
@@ -127,20 +152,18 @@ elif speed_click.state() == True or arg == 'force-voct':
     done_running = False
     ui.set_hook(CalibrationState.AWAITING_3V, lambda: collector.collect_v1_voct())
     ui.set_hook(CalibrationState.DONE, lambda: collector.collect_v3_voct_and_store())
+
+    thread = start_thread(ui.tick, 0.033)
     while not done_running:
-        ## 30Hz loop
-        now = time.time()
         speed_click.update()
         pitch_click.update()
-        if now - last_run > 0.033:
-            ui.tick()
-            last_run = now
         if speed_click.risingEdge():
             ui.change_state(CalibrationState.EXIT)
         if pitch_click.risingEdge():
             ui.inc_state()
         if ui.state == CalibrationState.EXIT:
             done_running = True
+    thread.stop_thread()
     print '1V/Oct Manual Calibration Complete!'
 else:
     print 'Skipping Calibration'
