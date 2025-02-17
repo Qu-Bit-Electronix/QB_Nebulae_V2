@@ -100,12 +100,20 @@ class RepeatedTimer(threading.Thread):
         self.running = True
         self.daemon = True  # Ensures the thread exits when the main program does
 
+    # def run(self):
+    #     while self.running:
+    #         start_time = time.time()
+    #         self.func()
+    #         elapsed = time.time() - start_time
+    #         time.sleep(max(0, self.interval - elapsed))  # Maintain consistent timing
+
     def run(self):
+        next_run = time.time()
         while self.running:
-            start_time = time.time()
-            self.func()
-            elapsed = time.time() - start_time
-            time.sleep(max(0, self.interval - elapsed))  # Maintain consistent timing
+            self.func()  # Run the function
+            next_run += self.interval  # Schedule next run
+            sleep_time = max(0, next_run - time.time())  # Avoid negative sleep times
+            time.sleep(sleep_time)
 
     def stop(self):
         self.running = False
