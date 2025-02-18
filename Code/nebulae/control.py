@@ -282,13 +282,14 @@ class HybridData(object):
             temp_analog = (temp_analog * 2.0) - 1.0
             self.raw_cv = temp_analog
         if (self.channel >= 0):
-            temp_rnd = temp_analog * self.scaling
-            self.filtVal += self.filtCoeff * (temp_rnd - self.filtVal)
             # Apply scale and offset from calibration..
+            # The offset is handled differently for v/oct
             if self.name == "pitch" and self.new_calibration:
-                self.analogVal = self.offset + self.filtVal
+                temp_rnd = self.offset + (temp_analog * self.scaling)
             else:
-                self.analogVal = self.filtVal - self.offset
+                temp_rnd = (temp_analog * self.scaling) - self.offset
+            self.filtVal += self.filtCoeff * (temp_rnd - self.filtVal)
+            self.analogVal = self.filtVal
             self.hystVal = addHysteresis(self.hystVal, self.analogVal, hyst_amt)
             temp = self.hystVal + self.staticVal
             temp_rnd = round(temp, 4)
@@ -473,6 +474,7 @@ class ControlChannel(object):
         # Use new 1V/oct calibration if available
         has_voct_cal = self.hasOffset("pitch_voct_offset") and self.hasOffset("pitch_voct_scale")
         if self.name == "pitch" and has_voct_cal:
+            print("Using new v/oct calibration data...")
             voct_offset = self.gatherOffset("pitch_voct_offset")
             voct_scale = self.gatherOffset("pitch_voct_scale")
             self.setCVOffset(voct_offset)
