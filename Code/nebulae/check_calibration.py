@@ -83,7 +83,7 @@ class CalibrationUi(object):
 
 
 def launch_bootled():
-    cmd = "sudo pkill -1 -f /home/alarm/QB_Nebulae_V2/Code/nebulae/bootleds.py"
+    cmd = "sudo pkill -15 -f /home/alarm/QB_Nebulae_V2/Code/nebulae/bootleds.py"
     os.system(cmd)
     print "Launching LED program"
     fullCmd = "python2 /home/alarm/QB_Nebulae_V2/Code/nebulae/bootleds.py calibration"
@@ -91,7 +91,7 @@ def launch_bootled():
     print 'led process created: ' + str(led_process)
 
 def kill_bootled():
-    cmd = "sudo pkill -1 -f /home/alarm/QB_Nebulae_V2/Code/nebulae/bootleds.py"
+    cmd = "sudo pkill -15 -f /home/alarm/QB_Nebulae_V2/Code/nebulae/bootleds.py"
     os.system(cmd)
 
 led_process = None

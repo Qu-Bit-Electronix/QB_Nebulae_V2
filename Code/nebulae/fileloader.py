@@ -123,7 +123,7 @@ class FileLoader(object):
         return self.currentState
 
     def launch_bootled(self, mode):
-        cmd = "sudo pkill -1 -f /home/alarm/QB_Nebulae_V2/Code/nebulae/bootleds.py"
+        cmd = "sudo pkill -15 -f /home/alarm/QB_Nebulae_V2/Code/nebulae/bootleds.py"
         os.system(cmd)
         print "Launching LED program"
         if mode == 0:

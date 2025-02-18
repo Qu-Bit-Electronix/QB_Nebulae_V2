@@ -3,7 +3,7 @@ sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh rw
 sudo mount /dev/sda1 /mnt/memory
 if [ -f /mnt/memory/neb_update.zip ]
 then
-    sudo pkill -1 -f /home/alarm/QB_Nebulae_V2/Code/nebulae/bootleds.py
+    sudo pkill -15 -f /home/alarm/QB_Nebulae_V2/Code/nebulae/bootleds.py
     python2 /home/alarm/QB_Nebulae_V2/Code/nebulae/bootleds.py updating &
     echo "neb_update.zip detected."
     echo "Commencing Firmware Update Procedure"

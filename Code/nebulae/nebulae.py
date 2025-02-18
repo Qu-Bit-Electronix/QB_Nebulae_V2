@@ -245,7 +245,7 @@ class Nebulae(object):
 
     def loadUI(self):
         print "Killing LED program"
-        cmd = "sudo pkill -1 -f /home/alarm/QB_Nebulae_V2/Code/nebulae/bootleds.py"
+        cmd = "sudo pkill -15 -f /home/alarm/QB_Nebulae_V2/Code/nebulae/bootleds.py"
         os.system(cmd)
         if self.ui is None:
             self.ui = ui.UserInterface(self.c_handle) # Create User Interface
@@ -256,7 +256,7 @@ class Nebulae(object):
         self.ui.setCurrentInstr(self.new_instr)
 
     def launch_bootled(self):
-        cmd = "sudo pkill -1 -f /home/alarm/QB_Nebulae_V2/Code/nebulae/bootleds.py"
+        cmd = "sudo pkill -15 -f /home/alarm/QB_Nebulae_V2/Code/nebulae/bootleds.py"
         os.system(cmd)
         print "Launching LED program"
         fullCmd = "python2 /home/alarm/QB_Nebulae_V2/Code/nebulae/bootleds.py loading"
