@@ -8,7 +8,7 @@ import random
 import os
 import digitaldata
 import time
-from calibration_collector import CalibrationData
+from calibration_data import CalibrationData
 # Hardware SPI configuration:
 SPI_PORT   = 0
 SPI_DEVICE_CV = 0
