@@ -58,14 +58,14 @@ class CalibrationCollector(object):
         delta = self.v3 - self.v1
         if delta == 0.0:
             return
-        scale = (24.0 / delta) / 60.0
-        offset = (12 - scale * self.v1) / 60.0
+        scale = 24.0 / delta
+        offset = 12 - scale * self.v1
         os.system("sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh rw")
         filepath = "/home/alarm/QB_Nebulae_V2/Code/misc/"
         filename = "calibration_data.txt"
         with open(filepath + filename, "a") as myfile:
-            l1 = ",".join(["pitch_voct_scale", str(scale), "\n"])
-            l2 = ",".join(["pitch_voct_offset", str(offset), "\n"])
+            l1 = ",".join(["pitch_voct_scale", str(scale / 60.0), "\n"])
+            l2 = ",".join(["pitch_voct_offset", str(offset / 60.0), "\n"])
             myfile.write(l1)
             myfile.write(l2)
         os.system("sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh ro")
