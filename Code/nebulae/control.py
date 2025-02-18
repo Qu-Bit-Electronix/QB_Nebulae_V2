@@ -8,6 +8,7 @@ import random
 import os
 import digitaldata
 import time
+from calibration_collector import CalibrationData
 # Hardware SPI configuration:
 SPI_PORT   = 0
 SPI_DEVICE_CV = 0
@@ -472,11 +473,8 @@ class ControlChannel(object):
             self.setCVOffset(new_offset)
 
         # Use new 1V/oct calibration if available
-        has_voct_cal = self.hasOffset("pitch_voct_offset") and self.hasOffset("pitch_voct_scale")
-        if self.name == "pitch" and has_voct_cal:
-            print("Using new v/oct calibration data...")
-            voct_offset = self.gatherOffset("pitch_voct_offset")
-            voct_scale = self.gatherOffset("pitch_voct_scale")
+        if self.name == "pitch" and self.isManuallyCalibrated():
+            voct_scale, voct_offset = self.gatherVoctCalibration()
             self.setCVOffset(voct_offset)
             self.setCVScaling(voct_scale)
 
@@ -569,42 +567,24 @@ class ControlChannel(object):
         else:
             return self.curVal
 
-    def hasOffset(self, name):
-        filepath = '/home/alarm/QB_Nebulae_V2/Code/misc/'
-        filename = 'calibration_data.txt'
-        found = False
-        try:
-            with open(filepath + filename, 'r') as myfile:
-                for line in myfile:
-                    if line.startswith(name):
-                        found = True
-                        datalist = line.split(',')
-                        try:
-                            val = float(datalist[1])
-                        except:
-                            found = False
-                            print 'list value is not a floating point number:' + datalist[1]
-        except:
-            print 'No file: ' + filepath + filename
-        return found
+    def isManuallyCalibrated(self, name):
+        data = CalibrationData()
+        return data.manually_calibrated
 
 
     def gatherOffset(self, name):
-        filepath = '/home/alarm/QB_Nebulae_V2/Code/misc/'
-        filename = 'calibration_data.txt'
-        val = 0.0
-        try:
-            with open(filepath + filename, 'r') as myfile:
-                for line in myfile:
-                    if line.startswith(name):
-                        datalist = line.split(',')
-                        try:
-                            val = float(datalist[1])
-                        except:
-                            print 'list value is not a floating point number:' + datalist[1]
-        except:
-            print 'No file: ' + filepath + filename
+        """Gathers stored calibration data for generic CV inputs"""
+        caldata = CalibrationData()
+        val = caldata.offsets[name]
         return val
+
+    def gatherVoctCalibration(self):
+        """
+        Gathers stored calibration data for v/oct input
+        returns a tuple containing the scaling and the offset
+        """
+        caldata = CalibrationData()
+        return (caldata.voct_scaling, caldata.voct_offset)
 
     def update(self):
         #time.sleep(0.001)
