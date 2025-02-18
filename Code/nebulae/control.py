@@ -576,7 +576,10 @@ class ControlChannel(object):
     def gatherOffset(self, name):
         """Gathers stored calibration data for generic CV inputs"""
         caldata = CalibrationData()
-        val = caldata.offsets[name]
+        try:
+            val = caldata.offsets[name]
+        except KeyError:
+            val = 0.0
         return val
 
     def gatherVoctCalibration(self):
