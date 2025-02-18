@@ -30,12 +30,12 @@ sh /home/alarm/QB_Nebulae_V2/Code/scripts/enable_inputs.sh
 
 
 # new calibration does LEDs internally.. so we're force-killing the bootleds first now
-sudo pkill -1 -f /home/alarm/QB_Nebulae_V2/Code/nebulae/bootleds.py
+sudo pkill -15 -f /home/alarm/QB_Nebulae_V2/Code/nebulae/bootleds.py
 sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh rw
 sudo python2 /home/alarm/QB_Nebulae_V2/Code/nebulae/check_calibration.py
 sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh ro
 
-sudo pkill -1 -f /home/alarm/QB_Nebulae_V2/Code/nebulae/bootleds.py
+sudo pkill -15 -f /home/alarm/QB_Nebulae_V2/Code/nebulae/bootleds.py
 
 echo "Running Nebulae"
 python2 /home/alarm/QB_Nebulae_V2/Code/nebulae/nebulae.py
