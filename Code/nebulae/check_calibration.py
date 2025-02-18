@@ -37,6 +37,7 @@ class CalibrationUi(object):
         if new_state in self.transition_hooks:
             self.transition_hooks[new_state]()
         self.state = new_state
+        self.state_change_time = time.time()
 
     def inc_state(self):
         if self.state == CalibrationState.AWAITING_1V:
@@ -45,7 +46,6 @@ class CalibrationUi(object):
             self.change_state(CalibrationState.DONE)
         elif self.state == CalibrationState.DONE:
             self.change_state(CalibrationState.EXIT)
-        self.state_change_time = time.time()
 
     def tick(self):
         # update LEDs
@@ -58,7 +58,7 @@ class CalibrationUi(object):
             self.start_time = now
 
         # Automatically move to exit state 1s after completion of calibration
-        if now - self.state_change_time > 1000 and self.state == CalibrationState.DONE:
+        if (now - self.state_change_time) > 1.0 and self.state == CalibrationState.DONE:
             self.change_state(CalibrationState.EXIT)
 
         # Calculate elapsed time and use a 1-second (30 tick) period
