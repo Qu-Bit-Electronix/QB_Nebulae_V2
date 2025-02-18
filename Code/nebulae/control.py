@@ -567,7 +567,8 @@ class ControlChannel(object):
         else:
             return self.curVal
 
-    def isManuallyCalibrated(self, name):
+    def isManuallyCalibrated(self):
+        """checks if a manual v/oct calibration has been recorded by the user"""
         data = CalibrationData()
         return data.manually_calibrated
 
