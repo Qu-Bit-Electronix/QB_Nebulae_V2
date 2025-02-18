@@ -16,7 +16,8 @@ class CalibrationCollector(object):
         self.ch.updateAll()
         # data = []
         avg = 0
-        numSamps = 4096
+        # numSamps = 4096
+        numSamps = 256
         names = [
             "start",
             "size",
