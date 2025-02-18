@@ -90,7 +90,6 @@ class CalibrationData(object):
         path = self.FILEPATH + self.LEGACY_FNAME
         if not os.path.exists(path):
             return False
-        os.system("sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh rw")
         names = [
             "start",
             "size",
@@ -103,12 +102,11 @@ class CalibrationData(object):
         ]
         with open(path, "r") as f:
             for line in f:
-                parts = line.strip().split(",")
+                parts = [f for f in line.strip().split(",") if f.strip()] 
                 if len(parts) == 2:
                     name, value = parts
                     if name in names:
                         self.offsets[name] = float(value)
-        os.system("sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh ro")
         return True
 
     def _load_from_json(self):
@@ -119,12 +117,10 @@ class CalibrationData(object):
         path = self.FILEPATH + self.FNAME
         if not os.path.exists(path):
             return False
-        os.system("sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh rw")
         with open(path, "r") as f:
             data = json.load(f)
             # wouldn't be bad to add some validation here..
             self._from_dict(data)
-        os.system("sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh ro")
         return True
 
     def _remove_legacy_file(self):
