@@ -180,17 +180,6 @@ class CalibrationCollector(object):
             caldata.offsets[name] = avgs[name]
         caldata.save()
 
-        # OLD Writing of cal data to file
-        # filepath = "/home/alarm/QB_Nebulae_V2/Code/misc/"
-        # filename = "calibration_data.txt"
-        # os.system("sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh rw")
-        # with open(filepath + filename, "w") as myfile:
-        #     for name in names:
-        #         stuff = [name, str(avgs[name]), "\n"]
-        #         line = ",".join(stuff)
-        #         myfile.write(line)
-        # os.system("sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh ro")
-
     def collect_v1_voct(self):
         self.ch.updateAll()
         self.v1 = self.ch.channeldict["pitch"].getRawCVValue()
@@ -209,13 +198,3 @@ class CalibrationCollector(object):
         caldata.voct_offset = offset / 60.0
         caldata.manually_calibrated = True
         caldata.save()
-
-        # os.system("sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh rw")
-        # filepath = "/home/alarm/QB_Nebulae_V2/Code/misc/"
-        # filename = "calibration_data.txt"
-        # with open(filepath + filename, "a") as myfile:
-        #     l1 = ",".join(["pitch_voct_scale", str(scale / 60.0), "\n"])
-        #     l2 = ",".join(["pitch_voct_offset", str(offset / 60.0), "\n"])
-        #     myfile.write(l1)
-        #     myfile.write(l2)
-        # os.system("sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh ro")
