@@ -7,9 +7,9 @@
 LOC=/home/alarm/QB_Nebulae_V2/Code/scripts/
 
 $LOC/mountfs.sh rw
-systemctl unmask systemd-resolved
-systemctl enable systemd-resolved
-systemctl restart systemd-resolved
-timedatectl set-ntp true
-systemctl restart systemd-timesyncd
-systemctl stop nebulae
+sudo systemctl unmask systemd-resolved
+sudo systemctl enable systemd-resolved
+sudo systemctl restart systemd-resolved
+sudo timedatectl set-ntp true
+sudo systemctl restart systemd-timesyncd
+sudo systemctl stop nebulae
