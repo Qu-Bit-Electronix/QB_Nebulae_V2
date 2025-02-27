@@ -1,0 +1,163 @@
+
+The Idea of Realms
+------------------------------------------------------
+  Imagine yourself places you can observe, like rooms, cities or landscapes.
+  In Realms these are called 'Rooms' and you are the observer of sounds in these rooms, where sounds can be 'Near' or 'Far'.
+
+  Realms can morph through seven of these rooms, like going from one place to the other.
+  For instance, from a calm forest, to the next where the critters and birds in the back are replaced by thunderstorms, but you are still near the calm creek.
+  The next Room can slowly take you to the city with crowded noises and cars. Next you will enter a factory, eventually invaded by zombies...
+
+  What story you tell, consisting of sounds or melodies, is up to you!
+
+  An incoming sound can also be processed, from Near to Far, from Left to Right. All this in stereo!
+
+  Realms is an concept created by Robert Pabst (Cinematic Laboratory) and written for the Nebulae V2 by Ian Hoogeboom (Studio48).
+
+
+Sound files and naming
+------------------------------------------------------
+  Rooms consist of a pair of ambient sound files looping per Room. A First and Second file, so there can be 14 files maximum in total. Less pairs of files results in less rooms.
+  The lexical sort order of the files is important. For ease, you can prefix the names with two numbers to make it more easy.
+  For instance, the first number is the room number, the second is 1 or 2, for the first and second file per room.
+  Like 11_forest.wav; 12_creek.wav; 21_city.wav; 22_cars.wav etc., until 71_abc.wav and 72_xyz.wav. You don't have to use this method, but it will make it easier.
+
+  TIP:
+  The Nebulae V2 firmware (not the Realms instrument) has a total file size limit of 75MB which can be loaded. This limit is _file size_ and not related to the length of the audio.
+  As a result when using .flac files, which is lossless compression, you can achieve longer sample times than with .wav files! (This is also the case with Granular Looper instrument!)
+
+  During loading of the sound files, cyan LED and Button animations will show which can take up to 30 seconds, if you loaded up to 75MB of sound files.
+  After that, all files must be decompressed if applicable (in case of .flac) and processed for loop detection which might take up to 60 seconds more after the cyan LED animation.
+  With 75MB of .flac (lossless compression) files, it should not take more than a minute and a half to load/decompress and loop-checked and sound should be played after that.
+  If in doubt, when it is still silent, the [Freeze] button should be able to be toggled on and off after the cyan LED animation. If it toggles, the Nebulae is still processing...
+
+  Reloading of new files after Realms is started, e.g. when you swapped the USB stick, can be done by press and hold [File] and then _short_ press / 'click' [Source]. The cyan LEDs will animate. You can let go of [File].
+  
+  *NOTE*: After loading, long press [Source]. This will reload all current knob values and settings.
+
+
+LOADING Realms Alternate Instrument
+------------------------------------------------------
+  Place sound files (maximum of 14 sound files, 2 per room) and the realms.instr on the (empty) root of a USB stick. Previous content can be moved to a separate directory if needed.
+  Put USB stick in the Nebulae and turn on the Nebulae V2 / your modular.
+
+  Press and hold [Speed] knob until 3 or 4 LEDs surrounding it are green.
+  Rotate [Speed] CCW until top left LED and bottom 2 LEDs are green. This is the .instr selection menu.
+  When you placed the realms.instr on an empty USB stick, only the left most button at the bottom is lit. This corresponds to the only one .instr on the USB stick.
+  Press that button and press Speed again. (If you have multiple .instr files on the USB stick, press the corresponding button; see manual).
+
+  *NOTES*:
+    After loading the Realms instrument, press and hold [Source] + short press [Pitch] simultaneously to reset all Alt (secondary) parameters to their default values.
+    Previous secondary values from a previous different loaded instrument are not reset when loading a new one and you might get unwanted results.
+
+    If you don't hear anything, but pressing [Freeze] does make the LED go on/off, check that Pitch Alt is not fully CCW.
+
+
+CONTROLS v1.0
+------------------------------------------------------
+The default values in brackets are also the starting point of an initial Realms patch:
+
+  * Speed         (CCW) Room selection:             Room selection. (CCW) is first room, (CW) is last room. A maximum of 7 rooms (with First and Second sound files) can be loaded.
+  * Speed Alt     (DEF) Input gain:                 Gain of the Input signal. (CW) is maximum (right LED = purple). Default functionality of the Nebulae V2.
+  * Pitch         (12H) Global pitch:               Pitch selection of all rooms (1v/oct).
+  * Pitch Alt     (DEF) Output gain:                Output gain between x0 (CCW) and x4 (CW). (12H) = 1x (Purple LEDs off). LEDs will blink when reaching minimun (x0) and maximum (x4).
+  * Start         (CCW) Incoming signal Near/Far:   In Stereo mode, Near (CCW) to Far (CW). In 2x Mono mode, at (CW) Left is Near and Right is Far.
+  * Start Alt     (12H) Balance Near/Far:           Volume crossfade between Near and Far.
+  * Size          (CCW) Near/Far First/Second:      Swap First and Second sound files in Near and Far effect chains; at (CCW) First 100% in Near, Second 100% in Far.
+  * Size Alt      (12H) Reverb tail time:           From no tail (CCW) to very long (CW). Also effects Pre-delay.
+  * Density       (12H) Input signal panning:       Pan incoming signal from Left to Right. In 2x Mono mode, Near and Far are panned opposite each other.
+  * Density Alt   (12H) Far Filter cutoff freq:     Moog Ladder Cutoff frequency on the Far signal (Ambient + Incoming signal).
+  * Overlap       (12H) Room rotation:              Rotates Near/Far to Left/Right and Left/Right to Near/Far. Like turning your head!
+  * Overlap Alt   (02H) Reverb damping:             A 'filter-ish' effect on the reverb tail. Changing the character of the reverb.
+  * Blend         (12H) Balance In/Rooms:           Volume crossfade between Audio Incoming signal (CCW) and Room files (CW).
+  * Blend Alt     (CCW) Pulse Amount or Length:     When in Clock mode, 4/4 with a bpm between ~100 and ~180 bpm during the shortest file. In Random mode, pulse length between 15ms (pulse) to 13 seconds (gate).
+  * Window        (12H) Balance First/Second:       Volume crossfade between First and Second sound file.
+  * Window Alt    (12H) Reverb Dry/Wet Mix:         Dry/Wet Mix of Reverb/Original Far Signal. At (CCW) the Far Signal is 100% dry and (CW) the Far Signal is 100% wet.
+
+  * Record Alt    (Off) Stereo / 2x Mono mode:      Off: Stereo panning from Left to Right; On: 2x Mono mode. Left and Right are mono inputs. Far is panned opposite to Near.
+  * File Alt      (Off) Gate / 2x Trigger Pulse:    Off: One pulse Length long pulse (a gate); On: two short pulses (2x triggers), one at the start of a loop (see Source) and one at the end of the pulse length.
+  * Source        (Off) Clock or Random Mode:       Off: Clock mode, pulses based on the shortest sound file loop; On: Random mode, a pulse is generated on every sound file loop restart with a (1/#rooms)th chance.
+  * Reset         (Off) Reverb type:                Off: "Jezar's Freeverb"; On: "Feedback Delay Network (FDN) Reverb".
+  * Reset Alt     (Off) Reverb Pre-delay:           Turn Reverb Pre-delay On or Off. re-delay time changes with Reverb Tail Time [Size Alt], from 0 to 200 ms.
+  * Freeze        (Off) Disable rotation:           Disable Room Rotation. Same as [Overlap] = 12H.
+  * Freeze Alt    (Off) Continuous rotation:        When activated and [Overlap] hits (CW) or (CCW), turning [Overlap] back, will continue the rotation direction to make a 'full circle'.
+
+  *NOTES*:
+    To change the Alt (secondary) functions, press [Source] and hold it, and turn the knob or press the button.
+    The Alt (secondary) functions can all be reset to their default values by pressing [Source] + [Pitch] together. Do this also after loading Realms for the first time.
+
+    Do to normalization of Left into Right, in 2x Mono mode [Record Alt] = On and you want to patch only 1 cable/mono signal, either patch in Right (panning is swapped), or in Left plus a dummy in Right.
+    On the other hand, when you have only 1 cable/mono signal, the Stereo mode [Record Alt] = Off works just fine!
+
+    Basically the left side knobs of the Nebulae is for the Input signal adjustments, the left side Alt functions are mainly for Near / Far adjustments.
+    The right side knobs of the Nebulae is for Room adjustments, rhe right side Alt functions for the Far reverb adjustments.
+
+WORKING WITH REALMS
+------------------------------------------------------
+
+Crossfades:
+  Balance Near/Far [Start Alt], Balance In/Rooms [Blend] and Balance First/Second [Window] are not linear between CCW and CW. They behave as crossfades.
+  Between CCW and 12H, one volume stays 100%, but the other goes from 0 to 100%. From 12H to CCW, the other stays at 100% and the former goes from 100% to 0. In the centre (12H), both volumes are 100%.
+
+Effects:
+  There is no effect on the Near signal, only Filter and Reverb effects are on the Far signal.
+
+  The 'Far effects chain' is a Reverb with Moog Ladder filter on the dry input signal.
+  Using [Density Alt], you can filter high frequencies from the Far signal. The reverb tail will loose detail.
+  The Dry/Wet ratio of the Far signals reverb can be set with [Window Alt].
+  The length of the effect tail is set by [Size Alt]. At CCW, there is no effect.
+  Reverb damping [Overlap Alt] is very subtle. A different kind of Reverb can be chosen with toggling the [Reset] button.
+  Pre-delay of the Reverb can be turned On of Off with [Reset Alt].
+
+Knobs and Rooms:
+  For a default/initial starting point, see the knob values in brackets in the CONTROLS section of this document. Reset Alt values with a short press of [Source] + [Pitch].
+
+  With [Speed] you can change rooms, like a story being told. The volumes of the rooms are changed, from the current to the next or previous.
+
+  When [Size] is a CCW, the First sound file is loaded as Near, the Second sound file is Far. It can swap First and Second when you set it to CW.
+  With [Window], the volume between the First and Second sound file can be crossfaded, changing there respective volumes.
+
+  The volume between the Near and Far signal can be crossfaded with [Start Alt].
+
+  TIP: If you believe the panning on the output misbehaves, this is probably due to the fact 'Rotation' is not in the center.
+  Set [Overlap] to 12H (or CCW or CW). You can also press [Freeze] which disables rotation.
+
+Pulse:
+  Pulses are generated at the [Pulse] output as a clock or when a sound file loop is restarted, depening on [Source].
+
+  When [Source] = Off
+    There is a clock present at [Pulse]. Depending on the shortest sound file time, a maximum number of pulses are assigned based on 4/4 with a bpm between 100 and 180:
+    >= 10 sec: 128 pulses, >= 5 sec: 64 pulses, >= 2.5 sec: 32 pulses, >= 1.25 sec: 16 pulses, >= 0.66 sec: 8 pulses, >= 0.33 sec: 4 pulses, < 0.33 sec: 1 pulse.
+    The [Blend Alt] position will set the number of pulses from 1 to the maximum based on the shortest sound file time, where 1 is always inicates the loop restart. The clock speed changes with [Pitch].
+
+  When [Source] = On
+    There is a pulse with a (1 / number of rooms)th chance for every sound file restart. The [Blend Alt] is now the length or time between the pulses. From 30ms (trigger) to 13 seconds (gate).
+    After a pulse/gate time period, there is a 'backoff period' during which the [Pulse] will NOT be fired again. This backoff period is of the same length as the pulse time [Blend Alt].
+    When [File Alt] = Off, the pulse out is a trigger/gate where it is 'high' for the length of [Blend Alt].
+    When [File Alt] = On, the pulse out will be 'two pulses', with the length of [Blend Alt] in between.
+
+    Usage when [Source] = On :
+
+      Setting the pulse time [Blend Alt] to i.e. 10 seconds, you have for instance a 'recording time high signal' for 10 seconds and a same length period where no pulse is generated.
+      This time 'recording signal' can be changed from a long gate to two short pulses with [Source], marking a start and end recording trigger.
+      
+      [Blend Alt] = CCW and [File Alt] = Off:
+      _________|___________________|___________________|___________________|__________
+      
+      [Blend Alt] = 12H and [File Alt] = Off:
+      _________|^^^|_______________|^^^|_______________|^^^|_______________|^^^|______
+      
+      [Blend Alt] = 12H and [File Alt] = On :
+      _________|____|______________|____|______________|____|______________|____|_____
+
+
+Incomming signal:
+  The Incoming signal can be placed Near or Far using [Start] and Panned using [Density].
+  The volume between the Incoming signal and First/Second sound files can crossfaded with [Blend].
+  Input gain of the Input signal can be changed with [Speed Alt]. (CW) is maximum (right LED = purple).
+
+Using LFO's:
+  When you want to use LFO's to adjust setting via CV's, the knobs on the Nebulae work as offset and the CV expect -5v - +5v range.
+  So the CV value is added to the knobs position. If you use -5v - +5v LFO's set the knobs in the center (12H) position.
+  If you use LFO's with a 0 - +5v range, you can't adjust the whole kon range and you need to set the knob to a position for a start offset.
+
