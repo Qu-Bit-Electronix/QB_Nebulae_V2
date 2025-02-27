@@ -1,112 +1,94 @@
 
 -------------------------------------------------
-MARS AFFECTS v1.4, 2021-10-05
+MARS AFFECTS v1.5 (code name V), 2025-02-02
 -------------------------------------------------
-Mars Affects, an effect instrument for the Qu-Bit Nebulae v2.
-Based on the original 'Effects' and 'World of Echo' instruments.
+Mars Affects, a Filter + VCA + Clocked Delay + Reverb effect instrument for the Qu-Bit Nebulae v2.
 Yes, 'Affects' with an 'A' and Mars with an 'M'.
 
+-------------------------------------------------
+Features
+-------------------------------------------------
+Stereo delay, which can be Skewed independently to create a differences in Left and Right.
+The delay can be clocked or run freely with a divided/multiplied clock out.
+Reverb effect which can be enriched with a Chorus/Flanger-like effect.
+The Reverb enrichment can be either an LFO or random.
 
--------------------------------------------------
-Changes / Enhancements to the original instrument
--------------------------------------------------
-Two delay lines, which can be Skewed independently to create a Stereo Delay.
-Reverb effect can be enriched with a Chorus-like effect.
-The Reverb enrichment can be either an LFO (Pitch clockwise) or random (Pitch counter clockwise).
-Two input modes: Stereo or '2x Mono mode'. Output is Stereo in both modes.
-Mixing Left and Right signal, very handy in '2x Mono mode'.
 Independent control for the Dry or Delay signal going into the Reverb.
-Knob ranges and responses have been tweaked to go a bit more extreme.
+Extreme Delay and Reverb settings will create ambient effects.
+Two input modes: Stereo or '2x Mono mode'. Output is Stereo in both modes.
+In '2x Mono mode' mixing Left and Right signal.
+A DJ Style filter (MS20 type), High pass and Low pass.
+A build-in VCA and separate triggered ducking effect.
 
+-------------------------------------------------
+Version Changes
+-------------------------------------------------
 Fixed issue #1: Delay line could have a delay time set larger than the buffer, resulting in noisy static. Fixed in v1.1
 Fixed issue #2: Delay feedback size 1 could break the reverb send, resulting in noisy static. Fixed in v1.2
-Enhanchment #3: A rewrite of the Chorus-like shimmer effect. v1.3
-Enhanchment #4: Removed the inverted working of the secondary controls for Left/Right mixing and controling the Dry signal/Delay into Reverb. v1.4
+Enhancement #3: A rewrite of the Chorus/Flanger-like Alien Shimmer Effect. v1.3
+Enhancement #4: Removed the inverted working of the secondary controls for Left/Right mixing and controlling the Dry signal/Delay into Reverb. v1.4
+Makeover    #5: A complete makeover. v1.5 (code name V)
+                Another rewrite of the Alien Shimmer Effect...
+                Added Clocked Delay
+                Added DJ Filter, Korg35 type
+                Added Stereo VCA / Ducking Effects
+                Added Pre-delay
+                Added internal Clock Out
 
+
+Below the descriptions of all the knobs, buttons and in/outputs.
+Between brackets is a default starting position.
 
 -------------------------------------------------
-Delay Section (Top three knobs)
+Delay Section
 -------------------------------------------------
-Start       - Delay Time
-Speed       - Delay Stereo Skew
-Size        - Delay Feedback
-Size Alt    - Delay signal to Reverb
+ * Start        - Clock Divider / Delay Time    ; (12H) Clock Divide when in Clocked Mode; Speed of clock when freerun
+ * Density      - Delay Volume amount           ; (12H) Volume of the Delay effect
+ * Reset        - Clock Input / Manual Tap      ; (Off) Clocked Mode -> Clock In or Tap speed; Freerun mode -> Reset Clock
+ * Freeze       - Maximum Wet Effects           ; (Off) 'Max Delay into Reverb' + 'Max Reverb' + '100% Wet'
 
----
-Pressing Speed will reset the Stereo Skew to Mono (right LED) or a set 'moderate' Stereo field (left LED).
-Rotating Speed will extend the skew time between delay effects.
+ * Start Alt    - Stereo Delay Skew             ; (Def) Stereo Skew the Left and Right Delay; First setting creates a 'wide effect'
+ * Density Alt  - Delay Feedback amount         ; (Def) The amount of Delay Feedback
+ * Reset Alt    - Clocked or Freerun            ; (Def) Clocked Mode (on) or Freerun mode (off)
+ * Freeze Alt   - 100% Wet                      ; (Def) 100% wet, no dry sound to output
 
-Size Alt (secondary function) controls the amount of Delay going into Reverb.
-At CW all Delay is passed to Reverb, at CCW no Delay is passed to Reverb.
-
-Start Alt has currently no function.
-
+ * Pulse Out    - Clock Output                  ; Internal Clock out. When clocked, it is the result after dividing the Clock.
 
 -------------------------------------------------
 Reverb Section (Middle three knobs)
 -------------------------------------------------
-Density     - Reverb Time
-Density Alt - Pitch LFO/random Speed
-Pitch       - Reverb Chorus-like Effect Amount
-Pitch Alt   - Reverb Effect Feedback and 'Shift' Amount
-Overlap     - Reverb Filter Colour
-Overlap Alt - Dry signal to Reverb
+ * Size         - Reverb Size                   ; (12H) Size of the Reverb, also affects pre-delay
+ * Overlap      - Reverb Amount / Reverb Only   ; (10H) Reverb Volume amount; After 12 o'clock, dry signal will be removed from Reverb, fully CW = 100% wet.
+ * Source       - Reverb Pre-delay              ; (Off) Predelay on/off; Length depending on Reverb size (0-200ms)
+ * Pitch        - Shimmer Amount, LFO / Random  ; (Def) Amount of Alien Shimmer Effect; LFO (clockwise) / Random (counter clockwise)
+ * Freeze       - Maximum Wet Effects           ; (Off) 'Max Delay into Reverb' + 'Max Reverb' + '100% Wet'
 
----
-Pressing Pitch will reset the Chorus-like effect to zero.
-
-Pitch Alt (secondary function) controls the Feedback and 'shift' amount of the Chorus-like effect.
-
-Overlap secondary function controls the amount of Dry signal going into Reverb.
-At CW all Dry signal is passed to reverb, at CCW no Dry signal is passed to Reverb.
-
+ * Size Alt     - Dry to Reverb                 ; (Def) The amount of the Dry signal going into the Reverb
+ * Overlap Alt  - Delay to Reverb               ; (Def) The amount of the Delay signal going into the Reverb
+ * Pitch Alt    - Shimmer Depth                 ; (Def) Depth of the Alien Shimmer Effect
+ * Blend Alt    - LFO / Random Speed            ; (Def) LFO / Random Speed amount of the 
+ * Freeze Alt   - 100% Wet                      ; (Def) 100% wet, no dry sound to output
 
 -------------------------------------------------
-Mixing Section (Lower two knobs and buttons)
+"The rest"
 -------------------------------------------------
-Blend       - Delay Amount
-Blend Alt   - Left signal level
+ * Speed        - DJ Filter LP/HP               ; (Def) LP filter (CCW), HP filter (CW);          In 2x Mono mode, filter is only applied to LEFT signal!
+ * Blend        - Panning / L/R Input Balance   ; (12H) Panning Input Signal;                     In 2x Mono mode, LEFT and RIGHT input balance
+ * Window       - VCA / Total Output Gain       ;  (CW) VCA; When no CV input, set knob fully CW! In 2x Mono mode, VCA is only applied to LEFT signal!
+ * Record       - Mute Incoming Signal          ; (Off) Mute Input signal, the effect dies out
+ * File         - Ducking Trigger               ; (Off) Ducking the Effects and partially the Dry signal
 
-Window      - Reverb Amount
-Window Alt  - Right signal level
-
-Record      - Mute incoming Signal
-Source      - Stereo or 2x Mono mode
-Freeze      - 100% Wet
-
----
-Blend controls the Delay amount.
-
-Blend secondary function controls the level of Left signal coming in.
-At CW all Left signal is processed, at CCW no signal is processed.
-
-Window controls the Reverb amount.
-
-Window secondary function controls the level of Right signal coming in.
-At CW all Right signal is processed, at CCW no signal is processed.
-
-Pressing Record will stop the incoming audio.
-The Delay and Reverb effect continue to run until faded out. You can still play with long feedbacks.
-Triggered by a rising edge pulse.
-
-Pressing Source will switch Mars Affects from Stereo mode (off) to 2x Mono mode (on).
-In 2x Mono mode, the Left and Right signal are mixed (monofied) and then passed to the effects. The output is still Stereo.
-The Left and right incoming signal levels can be individually mixed by the secondary functions of Blend and Window.
-Triggered by a falling edge (short) pulse.
-
-Pressing Freeze will not mix the Dry signal, only the Wet signal is heard.
-Triggered by a rising edge pulse.
-
-File and Reset knobs and Pulse input currently have no function.
-
+ * Speed Alt    - Input gain (Left/Right)       ; (Def) Input Gain, default functionality of Nebulae Hardware (source + press = reset)
+ * Window Alt   - Ducking Release Time          ; (Def) 0 to 2 seconds
+ * Record Alt   - 2x Mono in mode               ; (Def) In 2x Mono mode, the LEFT and RIGHT signal are both treated as mono. RIGHT is not passed on to the Filter and VCA.
 
 -------------------------------------------------
-Tips and tricks
+Other useful information
 -------------------------------------------------
-Delay time '0' (Start at CCW) and Feedback high (Size towards CW) will go to Flanger/Karplus range effects.
-There are situations in Delay where left or right independently might be cancelled or go into Flanger/Karplus range.
-There is no clock division or multiplication, but adding a clock to the Speed in can have very similar results.
-Muting the incoming signal with Record, you can still play with the effects when a large Feedback is set for the Delay and Reverb.
+
+In 2x Mono mode, the Left and Right signal are mixed (monofied) and LEFT is send to the Filter and VCA. Both signals are passed to the effects. The output is still Stereo.
+Pressing Freeze will not mix the Dry signal, the Reverb is on maximum Size and Send settings and a slightly bleed of Delay will make a 'Sustained' mode (but it will die out eventually).
+There is a detection of clipping when the internal signal is too high and the Delay is 'ducked' a bit, after that if the signal is still to high, soft clipping is applied.
 
 Last but not least: "Ack! Ack! Ack!" - The Martians
 

@@ -1,216 +1,571 @@
 nebconfigbegin
-ksmps,1
 -B,512
 -b,128
-blend_alt, 1.0
-window_alt, 1.0
+start, 0.5
+pitch_alt, 0.5
+blend_alt, 0.5
+window, 1.0
+window_alt, 0.5
 size_alt, 1.0
+density_alt, 0.66
 overlap_alt, 1.0
 sr,48000
+kr,3000
+reset,triggered,rising
+reset_alt,latching,falling
+file,triggered,rising
+file_alt,latching,falling
 nebconfigend
 
+; http://www.csounds.com/manual/html/UsingOptimizing.html
+
 /****************
- MARS AFFECTS v1.4, based on Original 'Effects' / 'World of Echo'
+ MARS AFFECTS 1.5, based on Original 'Effects' / 'World of Echo'
+
+ Input --> Filter --> VCA --> Delay --> Effect --> Reverb --> Ducking --> Output
 
  * Overview of controls *
- * Pitch        - Reverb Pitch RND - LFO      [gkpitch]
- * Pitch Alt    - Pitch Depth and Feedback    [gkpitch_alt]
- * Speed        - Stereo Delay Skew           [gkspeed]
- * Start        - Delay Time                  [gkloopstart]
- * Start Alt    -                             [gkloopstart_alt]
- * Size         - Feedback                    [gkloopsize]
- * Size Alt     - Delay to Reverb             [gkloopsize_alt]
- * Density      - Reverb Time                 [gkdensity]
- * Density Alt  - Pitch LFO Speed             [gkdensity_alt]
- * Overlap      - Reverb Filter               [gkoverlap]
- * Overlap Alt  - Dry to Reverb               [gkoverlap_alt]
- * Blend        - Delay Amount                [gkblend]
- * Blend Alt    - Left mix                    [gkblend_alt]
- * Window       - Reverb Amount               [gkwindow]
- * Window Alt   - Right mix                   [gkwindow_alt]
- * Record       - Mute Incomming Signal       [gkrecord]
- * File         - (none)                      [gkfilesel]
- * Source       - 2x Mono in mode             [gksource]
- * Reset        - (none)                      [gkreset]
- * Freeze       - 100% Wet                    [gkfreeze]
+
+ * Speed        - DJ Filter LP/HP             [gkspeed]           ; In 2x Mono mode, filter is only applied to LEFT signal!
+ * Speed Alt    - Input gain (Left/Right)     [gkspeed_alt]       ; Input Gain (default functionality) of Nebulea Hardware (source + press = reset)
+ * Pitch        - Shimmer Amount, LFO/Random  [gkpitch]
+ * Pitch Alt    - Shimmer Depth               [gkpitch_alt]
+ * Start        - Clock Divider / Delay Time  [gkloopstart]
+ * Start Alt    - Stereo Delay Skew           [gkloopstart_alt]
+ * Size         - Reverb Size                 [gkloopsize]
+ * Size Alt     - Dry to Reverb               [gkloopsize_alt]
+ * Density      - Delay Amount                [gkdensity]
+ * Density Alt  - Delay Feedback              [gkdensity_alt]
+ * Overlap      - Reverb Amount / Reverb Only [gkoverlap]         ; after 12 oclock, dry signal is removed from Reverb
+ * Overlap Alt  - Delay to Reverb             [gkoverlap_alt]
+ * Blend        - Panning / L/R Input Balance [gkblend]
+ * Blend Alt    - LFO / Random Speed          [gkblend_alt]
+ * Window       - VCA / Total Input Gain      [gkwindow]
+ * Window Alt   - Ducking Release Time        [gkwindow_alt]
+
+ * Record       - Mute Incoming Signal        [gkrecord]
+ * Record Alt   - 2x Mono in mode             [gkrecord_alt]
+ * File         - Ducking Trigger             [gkfilesel]
+ * Source       - Reverb Pre-delay            [gksource]
+ * Reset        - Clock Input / Manual Tap    [gkreset]           ; Clocked mode -> Clock In , Freerun mode -> Reset Clock
+ * Reset Alt    - Clocked or Freerun          [gkreset_alt]       ; Clocked mode (on) or Freerun mode (off)
+ * Freeze       - Sustain/Max Reverb Mode     [gkfreeze]          ; 'Max Delay' + 'Max Reverb'
+ * Freeze Alt   - 100% Wet                    [gkfreeze_alt]
+
+ * Pulse        - Clock Output                                    ; Clocked mode -> Mirror Clock In , Freerun mode -> Internal Clock out 'qppn'
 
  Issues / Fixed / Rework
- #1 : Delay line could have a delay time set larger than the buffer, resulting in noisy static. Fixed in 1.1
- #2 : Delay feedback size 1 could break the reverb send, resulting in noisy static. Fixed in 1.2
- #3 : Rewrite of the 'chorus' effect. Version 1.3
- #4 : Use 'nebconfig' for secondary control defaults (see defaultnebsettings.txt) to remove the inverted working of secondary blend, window, size and overlap. Fixed in 1.4
-      Downside; the defaultnebsettings.txt overwrite these settings when testing.
+ #1     : Delay line could have a delay time set larger than the buffer, resulting in noisy static. Fixed in 1.1
+ #2     : Delay feedback size 1 could break the reverb send, resulting in noisy static. Fixed in 1.2
+ #3     : Rewrite of the 'chorus' effect. Version 1.3
+ #4     : Use 'nebconfig' for secondary control defaults (see defaultnebsettings.txt) to remove the inverted working of secondary blend, window, size and overlap. Fixed in 1.4
+ #5-rc1 : 1.5 code name 'Mars Affects V'
+          Another rewrite of the shimmer effect...
+          Added Clocked Delay
+          Added DJ Filter, Korg35 type
+          Added Stereo VCA / Ducking Effects
+          Added Pre-delay
+ #5-rc2 : Smoothed out changing of delay time so the 'anomalies' are much less
+ #5-rc3 : Tweak Delay Skewing
+ #5-rc4 : Implement clock out on clocked and Freerun
+          Delay Damping when feedback makes the output clip
+          Tweak Panning and Ducking volume
+ #5     : Comment code clean-up
 
 ****************/
 
 instr 1
 
-ainl, ainr inch 1, 2
+; ------------------------------------------------------------
+; Init and Variables
+; ------------------------------------------------------------
+
+kInstrTime init 0
+iCalcDelay init 0.5
+kCalcDelay init iCalcDelay
+kIntervalCnt init 0
+gkClockDelay_sec init iCalcDelay
+gkClockTick init 0
+gkClockOn init 0
+kPulseTime_ms init 0
+iMaxDelayTime init 3
+
+gkPanning scale gkblend, 2, 0  ;  From 0 to 2
+gkInputGainBalance = gkPanning
+gkInputLGain min (2-gkInputGainBalance), 1
+gkInputRGain min gkInputGainBalance, 1
+
+gkOverlap_scale scale gkoverlap, 2, 0  ;  From 0 to 2
+gkOverlapCCW min (2-gkOverlap_scale), 1
+gkOverlapCW min gkOverlap_scale, 1
+
+gkEffectAmount = gkpitch
+gkEffectAmplitude = gkpitch_alt
+gkLFOSpeed = gkblend_alt
+
+gkClockIn = gkreset
+gkClocked = (gkreset_alt == 0 ? 1 : 0)
+
+gkSustainMode = gkfreeze
+gkReverbOnly = 1-gkOverlapCCW
+gkWetOnly = gkfreeze_alt
+
+gkMuteInput = gkrecord
+gkMonoInput = gkrecord_alt
+
+gkDelayTime = gkloopstart
+gkDelaySkew = gkloopstart_alt
+gkDelayAmount = gkdensity
+gkDelayFeedback = gkdensity_alt
+
+gkReverbSize = gkloopsize
+gkDryToReverb = gkloopsize_alt
+gkReverbAmount = gkOverlapCW
+gkDelayToReverb = gkoverlap_alt
+gkReverbDamping = 0.02
+gkReverbPreDelay = gksource
+
+gkDuckingVCA = gkfile_alt
+gkDuckingRelease = gkwindow_alt
+gkDuckingTrigger = gkfilesel
+
+gkVCA = gkwindow
+gkFilterFrq = gkspeed
+gkFilterRes = 0.4 ; fixed
+
+; Sustain Mode, max out delay and reverb
+if (gkSustainMode == 1) then
+  gkReverbOnly = 1
+  gkReverbSize = 0.95
+  gkReverbAmount = 0.95
+  gkReverbPreDelay = 0
+  gkDryToReverb = 1
+  gkDelayToReverb = 1
+  
+  gkDelayAmount = 0.95
+  gkDelayFeedback = 0.95
+endif
+
+kOutputDelayDamping init 1  ; to limit the volume of the Delay when it's to high
+kInstrFreeRunTime_reset init 0  ; to limit the volume of the Delay when it's to high
+
+; ------------------------------------------------------------
+; Mute and Panning incoming signal and Stereo / 2x Mono mode
+; ------------------------------------------------------------
+
+aInputL_org, aInputR_org inch 1, 2
+aInputL = aInputL_org * 0.9
+aInputR = aInputR_org * 0.9
+
+; soft mute
+kMuteInput portk gkMuteInput, 0.015
+
+if (gkMonoInput == 0) then
+  ; Stereo In, panning stereo
+  
+  if (gkPanning <= 1) then  ; to the left
+    aInputL = aInputL + (aInputR * (1-gkPanning))
+    aInputR =           (aInputR *    gkPanning)
+  else                      ; to the right
+    gkPanning = 1 - (gkPanning - 1)     ; convert from 1 to 2, to 1 to 0.
+    aInputR = aInputR + (aInputL * (1-gkPanning))
+    aInputL =           (aInputL *    gkPanning)
+  endif
+
+  aInputL = aInputL * (1-kMuteInput) * (1-((1-gkPanning)*0.3))   ; * 1 when no panning, * 0.7 when there is full panning
+  aInputR = aInputR * (1-kMuteInput) * (1-((1-gkPanning)*0.3))
+else
+  ; 2x Mono In, Balance
+
+  aInputL = (aInputL * gkInputLGain) * (1-kMuteInput)
+  aInputR = (aInputR * gkInputRGain) * (1-kMuteInput)
+endif
 
 
-; PARAMETERS
-; ----------
+; ------------------------------------------------------------
+; Filter incoming signal
+; ------------------------------------------------------------
 
-; RECORD and SOURCE - Mute incoming signal and Stereo / 2x Mono mode
+kFilterRes scale gkFilterRes, 1, 0
 
-if gkrecord == 0 then
-  ainl = ainl * gkblend_alt
-  ainr = ainr * gkwindow_alt
-  if gksource == 1 then
-    atot = (ainl + ainr) * 0.8
-    ainl = atot
-    ainr = atot
+kFilterFrq portk gkFilterFrq * (1/0.625), 0.025
+
+if (kFilterFrq <= 1) then
+  ;; Low-Pass
+;  kFilterFrq = kFilterFrq^5 * 22000
+  kFilterFrq = kFilterFrq^5 * (sr/2)
+
+  kFilterRes = (kFilterRes * 8.5) + 1
+  aInputL K35_lpf aInputL, kFilterFrq, kFilterRes
+  if gkMonoInput == 0 then
+    aInputR K35_lpf aInputR, kFilterFrq, kFilterRes
   endif
 else
-  ainl = 0
-  ainr = 0
+  ;; High-Pass
+  kFilterFrq = (kFilterFrq-1)*(1/0.6)
+;  kFilterFrq = kFilterFrq^4 * 22000
+  kFilterFrq = kFilterFrq^4 * (sr/2)
+
+  kFilterRes = (kFilterRes * 8.5) + 1
+  aInputL K35_hpf aInputL, kFilterFrq, kFilterRes
+  if gkMonoInput == 0 then
+    aInputR K35_hpf aInputR, kFilterFrq, kFilterRes
+  endif
 endif
 
-; FREEZE - Mute Dry
 
-kmutedry = 1
-if gkfreeze == 1 then
-  kmutedry = 0
+; ------------------------------------------------------------
+; Total Input Volume / VCA
+; ------------------------------------------------------------
+
+if (gkDuckingVCA == 0) then
+  aInputL = aInputL * gkVCA     ; don't apply portk slewing, VCA should be 'as responsive as possible', unless noticible
+  if (gkMonoInput == 0) then
+    aInputR = aInputR * gkVCA
+  endif
+endif
+
+if (gkMonoInput == 1) then
+  aInputSum = (aInputL + aInputR) * 0.7   ; When patched only Left, the hardware normalising will make the signal louder!
+  aInputL = aInputSum
+  aInputR = aInputSum
 endif
 
 
-; BLEND and WINDOW - Set Delay and Reverb amount
+; ------------------------------------------------------------
+; Clock
+; ------------------------------------------------------------
 
-kdelay_amount = gkblend
-kreverb_amount = gkwindow
+kIntervalArr[] fillarray iCalcDelay, iCalcDelay, iCalcDelay, iCalcDelay
+kIntervalArr_len init lenarray(kIntervalArr)
+
+kClockIn trigger gkClockIn, 0.5, 0
+
+if (kClockIn == 1) then
+  if (gkClocked == 0) then
+    kInstrFreeRunTime_reset timeinsts   ; reset kInstrFreeRunTime count (it is subtracted from total instr time)
+  endif
+
+  kInstrTime_old = kInstrTime
+  kInstrTime timeinsts
+  kInterval = kInstrTime - kInstrTime_old
+  
+  ; when clock tick is missed, don't change delay immediately and skip new calculation
+  kMissedClock = 0
+
+  ;  if (kInterval > (kCalcDelay * 1.80)) && (kInterval < (kCalcDelay * 2.2)) then    ; if the kInterval between two clocks tick is ~2x larger than the current kCalcDelay, it might have missed a tick
+  ;    kMissedClock = 1
+  ;  endif
+
+  if (kMissedClock == 0) && (kInterval < 2) then        ; the interval is less than two seconds
+    kIntervalArr[kIntervalCnt] = kInterval
+    kCalcDelay_temp = kIntervalArr[0]
+    kCalcDelay_temp += kIntervalArr[1]
+    kCalcDelay_temp += kIntervalArr[2]
+    kCalcDelay_temp += kIntervalArr[3]
+    kCalcDelay_temp = kCalcDelay_temp / kIntervalArr_len
+  endif
+  
+  ; tolerance when clock is not 100% stable
+  ;  if (kCalcDelay_temp < (kCalcDelay * 0.97)) || (kCalcDelay_temp > (kCalcDelay * 1.03)) then
+
+  kCalcDelay = kCalcDelay_temp
+
+  if (gkClockOn == 1) && (gkClocked == 0) then
+    turnoff2 2, 0, 1
+    gkClockOn = 0
+  endif
+
+  if (kCalcDelay == 0) then
+    kCalcDelay = iCalcDelay
+  endif
+
+  kIntervalCnt = (kIntervalCnt == (kIntervalArr_len - 1)) ? 0 : kIntervalCnt + 1
+
+endif
+
+if (gkClocked == 1) then
+  kClockDivider scale gkDelayTime, 6, 0
+  kClockDivider = floor(kClockDivider)    ; do NOT use a portk before a floor(), as it will never reach the 'x.0000' value!
+
+  if     (kClockDivider = 0) then
+    gkClockDelay_sec = kCalcDelay / 2
+  elseif (kClockDivider = 1) then
+    gkClockDelay_sec = kCalcDelay / 1.5
+  elseif (kClockDivider = 2) then
+    gkClockDelay_sec = kCalcDelay / 1
+  elseif (kClockDivider = 3) then
+    gkClockDelay_sec = kCalcDelay / 0.5
+  elseif (kClockDivider = 4) then
+    gkClockDelay_sec = kCalcDelay / 0.33
+  elseif (kClockDivider = 5) then
+    gkClockDelay_sec = kCalcDelay / 0.25
+  elseif (kClockDivider = 6) then
+    gkClockDelay_sec = kCalcDelay / 0.125
+  endif
+else
+  gkClockDelay_sec scale gkDelayTime, k(iMaxDelayTime)^(1/3), 0.03125^(1/3)
+  gkClockDelay_sec = gkClockDelay_sec^3
+endif
+
+;printks2 "gkClockDelay_sec %f\n", gkClockDelay_sec
+
+if (gkClockOn == 0) && (kPulseTime_ms <= 0) then
+  event "i", 2, 0, 32000000     ; Start the clock (again) after the gkClockDelay_sec changed
+  gkClockOn = 1
+endif
 
 
-; SIZE_ALT and OVERLAP_ALT - Set Delay/Dry to Reverb amount
+; ------------------------------------------------------------
+; Delay
+; ------------------------------------------------------------
 
-kdelay_to_reverb_amount = gkloopsize_alt
-koriginal_to_reverb = gkoverlap_alt
+kDelaySkew scale gkDelaySkew, 6, 0
+kDelaySkew = floor(kDelaySkew)
 
+if (gkSustainMode = 1) then
+  kDelaySkew = 1
+endif
 
-; PITCH, PITCH_ALT, DENSITY_ALT - Set Chorus-like amount
+if     (kDelaySkew = 0) then
+  kDelaySkew_offset = 0
+  kDelaySkew_factor = 1
+elseif (kDelaySkew = 1) then
+  kDelaySkew_offset = 0.0015           ; results in a dummy stereo effect
+  kDelaySkew_factor = 1
+elseif (kDelaySkew = 2) then
+  kDelaySkew_offset = 1/8
+  kDelaySkew_factor = 2-(1/8)
+elseif (kDelaySkew = 3) then
+  kDelaySkew_offset = 1/4
+  kDelaySkew_factor = 2
+elseif (kDelaySkew = 4) then
+  kDelaySkew_offset = 1/3
+  kDelaySkew_factor = 2+(1/3)
+elseif (kDelaySkew = 5) then
+  kDelaySkew_offset = 1/2
+  kDelaySkew_factor = 2+(1/2)
+elseif (kDelaySkew = 6) then
+  kDelaySkew_offset = 2/3
+  kDelaySkew_factor = 2+(2/3)
+endif
 
-kpitch portk gkpitch, 0.05
-;kpitch = gkpitch
-kpitch_dif = abs((kpitch - 0.6000) * (2.5))  ;  [1.5 ~ 0 ~ 1], 1.5 for RANDOM effect, 1.0 for LFO effect
-;    printks2 "kpitch_dif %f\n", kpitch_dif
+kDelaySkew_offset portk kDelaySkew_offset, 1
+kDelaySkew_factor portk kDelaySkew_factor, 1
 
-;kpitch_alt = gkpitch_alt
-kpitch_alt portk gkpitch_alt, 0.1
-kdensity_alt = gkdensity_alt
+kDelayTimeL_min min (gkClockDelay_sec - ((gkClockDelay_sec * kDelaySkew_offset)/kDelaySkew_factor)), k(iMaxDelayTime)
+kDelayTimeR_min min (gkClockDelay_sec +  (gkClockDelay_sec * kDelaySkew_offset)), k(iMaxDelayTime)
 
-; FREQ - PITCH influences the speed from 
-klfo_freq = 1.5
-klfo_freq = (((kpitch_dif * 0.9) + 0.1) * klfo_freq)             ;  [0.15-1.5] cycles per second
-klfo_freq = (klfo_freq + (klfo_freq * kdensity_alt * 12) + 0.5)  ;  [0.15-1.5] - [1.95-19.5] cycles per second
-;    printks2 "klfo_freq %f\n", klfo_freq
+aDelayTimeL tonex a(kDelayTimeL_min), 1.5, 8
+aDelayTimeR tonex a(kDelayTimeR_min), 1.5, 8
 
-
-; SPEED - Delay skew in the stereo field. Pressing the speed knob will reset to '0.6250' which represents 'the middle'
-; Response to negative / positive is not linear (due to 0.6250 being the middle
-
-kspeed_dif = ((exp(gkspeed - 0.6250) - 1) / 1.718282 * 2.5) ^ 3
-
-
-; EFFECT FUNCTIONS
-; ----------------
-
-; DELAY
-
-ktimel = (gkloopstart * (1.99 + kspeed_dif)) + (0.01)
-ktimer = (gkloopstart * (1.99 - kspeed_dif)) + (0.01)
-
-; add small slew to changing values
-kdelaytimel portk ktimel, 0.1
-kdelaytimer portk ktimer, 0.1
-
-; #2 Delay feedback size 1 could break the reverb send, resulting in noisy static, changed to * 0.95
-kfeedback_del portk (gkloopsize * 0.95), 0.1
-
-; #1 ktime_ / kdelaytime_ can be max 2.29(l) and 2.27(r), buffer was max 2
-; So one could address outside the buffer resulting in noisy static, changed buffer to 2.3 sec
+kDelayFeedback portk ((gkDelayFeedback * 0.75) + (1-gkloopstart) * 0.20), 0.1    ; longer feedback when delay time is shorter, but never max
 
 ; left delay line
-abufoutl delayr 2.3
-atapl deltap3 kdelaytimel
-delayw ainl + (atapl * kfeedback_del)
+aBufL delayr iMaxDelayTime + 0.1
+aTapL deltap3 aDelayTimeL   ; delay time in seconds
+      delayw aInputL + ((aTapL * a(kDelayFeedback)) * kOutputDelayDamping)
 
 ; right delay line
-abufoutr delayr 2.3
-atapr deltap3 kdelaytimer
-delayw ainr + (atapr * kfeedback_del)
+aBufR delayr iMaxDelayTime + 0.1
+aTapR deltap3 aDelayTimeR   ; delay time in seconds
+      delayw aInputR + ((aTapR * a(kDelayFeedback * (1-(kDelaySkew_offset*0.7)))) * kOutputDelayDamping)  ; when delay is long, shorten the feedback (test with FREEZE)
 
-; attenuate delay line with BLEND, it does not contain the original signal
-adelayl = (atapl * kdelay_amount)
-adelayr = (atapr * kdelay_amount)
+kDelayAmount portk gkDelayAmount, 0.1
 
-
-; REVERB
-
-; send the dry signal and delay line to the reverb, amount with WINDOW
-arsendl = ((ainl * koriginal_to_reverb * kreverb_amount) + (adelayl * kdelay_to_reverb_amount * kreverb_amount)) * 0.7
-arsendr = ((ainr * koriginal_to_reverb * kreverb_amount) + (adelayr * kdelay_to_reverb_amount * kreverb_amount)) * 0.7
-; "If CPU usage goes to 100% at the end of reverb tails, or you get audio glitches in processes that shouldn't use too much CPU, using denorm before the culprit opcode or process might solve the problem."
-denorm arsendl, arsendr
-
-; stuff for reverb
-ilogtimemin = log(0.6)    ;  was 0.6
-ilogtimemax = log(1.001)  ;  Make is slightly larger than one, this will make the reverb stay for a long time (grows a tiny bit)
-kreverbtime = exp((sqrt(gkdensity) * (ilogtimemax - ilogtimemin)) + ilogtimemin)  ;  was without sqrt(), this makes a better response
-ilogfiltmin = log(200.0)  ;  was 800
-ilogfiltmax = log(15000.0)
-kdampfilt = exp(gkoverlap * (ilogfiltmax - ilogfiltmin) + ilogfiltmin)
+aDelayL = (aTapL * kDelayAmount)
+aDelayR = (aTapR * kDelayAmount)
 
 
-; FLANGER within REVERB's path
-; #3 Rewrite of the 'chorus' effect
+; ------------------------------------------------------------
+; Reverb
+; ------------------------------------------------------------
 
-; flanger feedback amount, can be more extreme with the kpitch_alt
-kflan_fbck = 0.2 
-kflan_fbck = (kflan_fbck + (kflan_fbck * kpitch_alt * 3))  ;  0.2 + ([0-0.2] * 3) = 0.2 - 0.8
+; send the dry signal and delay line to the reverb
+kReverbAmount portk gkReverbAmount, 0.1
+kDryToReverb portk gkDryToReverb, 0.5
+kDelayToReverb portk gkDelayToReverb, 0.5
 
-; what is the max flanger delay
-kflan_delay = 0.01
-kflan_delay = kflan_delay + (kflan_delay * kpitch_alt * 2)  ;  0.01 + ([0-0.01] * 2) = 0.01 - 0.03
-;    printks2 "kflan_delay %f\n", kflan_delay
+aReverbSendL = ((aInputL * kDryToReverb * kReverbAmount) + (aDelayL * kDelayToReverb * kReverbAmount)) * 0.7
+aReverbSendR = ((aInputR * kDryToReverb * kReverbAmount) + (aDelayR * kDelayToReverb * kReverbAmount)) * 0.7
 
-if gkpitch >= 0.6 then
+kEffectAmount_port portk gkEffectAmount, 0.1
+kEffectAmount = abs((kEffectAmount_port - 0.6000) * (2.5))  ;  [1.5 ~ 0 ~ 1], 1.5 for RANDOM effect, 1.0 for LFO effect
+
+kLFOSpeed_scale scale gkLFOSpeed, 8, (1/4)    ; 8 cycles per second to 4 second cycle
+kLFOSpeed portk kLFOSpeed_scale, 0.1
+
+if gkEffectAmount >= 0.6 then
 ; LFO
-  ; have an LFO with amplitude of 1 and sine effect; sine sounds better when faster than a triangle
-  kampl = 0.5
-  ishape = 0 ; 0 = sin, 1 = tri
-  alfo_val lfo kampl, klfo_freq, ishape
-  aeffectdel = (alfo_val + 0.5) * kflan_delay  ;  [0-1] * kflan_delay
-else 
+  kEffectAmplitude portk (gkEffectAmplitude^2) * 0.05, 0.1
+
+  aLFOValue lfo kEffectAmplitude, kLFOSpeed, 0              ; 0 = sin, 1 = tri
+  aEffectDelay = (aLFOValue + (kEffectAmplitude/1.5)) * (1-((gkLFOSpeed) * 0.98))
+else
 ; RANDOM
-  kran_val randomh 0, 1, (klfo_freq * 15), 3
-  kran_res = kran_val * (kflan_delay * 1.1) ;  [0-1] * kflan_delay
-  kran_res portk kran_res, 0.02
-  aeffectdel = a(kran_res)  ;  convert the 'slewed' k-rate to a-rate for flanger
-;      printks2 "klfo_freq %f\n", klfo_freq
+  kEffectAmplitude portk (gkEffectAmplitude^2) * 0.4, 0.1
+
+  kRandom_value randomh 0, kEffectAmplitude, kLFOSpeed, 3
+  kRandom_value_port portk kRandom_value, (1/kLFOSpeed)/8
+  
+  aEffectDelay = a(kRandom_value_port) * (1-((gkLFOSpeed) * 0.8))
+
+  kEffectAmount = kEffectAmount / 1.5
 endif
-;    printks "aeffectdel %f\n", 0.1, aeffectdel
 
-aeffectl flanger arsendl, aeffectdel * 1.05, kflan_fbck  ;  little bit of stereo effect in the flanger delay
-aeffectr flanger arsendr, aeffectdel * 0.95, kflan_fbck  ;  little bit of stereo effect in the flanger delay
+kReverbSize_scale scale gkReverbSize, 0.95, 0
+kReverbSize portk kReverbSize_scale, 0.1
+kReverbDamping = gkReverbDamping
 
-; attenuate the effect with Pitch
-aeffectl = aeffectl * kpitch_dif
-aeffectr = aeffectr * kpitch_dif
+iMaxPreDelay_ms init 200
 
-; when filter is low, amplify it
-kdampfactor = ((1 - gkoverlap) / 0.6) + 0.7
+if (gkReverbPreDelay == 1) then
+  aReverbSendL vdelay aReverbSendL, (iMaxPreDelay_ms * 0.999) * kReverbSize, iMaxPreDelay_ms
+  aReverbSendR vdelay aReverbSendR, (iMaxPreDelay_ms * 0.999) * kReverbSize, iMaxPreDelay_ms
+endif
 
-; SEND TO REVERB
-averbl, averbr reverbsc (((arsendl + aeffectl) * 0.6) * kdampfactor), (((arsendr + aeffectr)  * 0.6) * kdampfactor), kreverbtime, kdampfilt, sr, 0.2
+; "If CPU usage goes to 100% at the end of reverb tails, or you get audio glitches in processes that shouldn't use too much CPU, using denorm before the culprit opcode or process might solve the problem."
+denorm aReverbSendL, aReverbSendR
+
+; send to reverb
+;-----------------------------------------------------------------
+;The filters on the right channel are slightly detuned compared to the left channel in order to create a stereo effect. -- droning will cause R to sound lower
+aReverbL, aReverbR freeverb aReverbSendL, aReverbSendR, kReverbSize, kReverbDamping, 88200, 1
+
+; send reverb to effect
+;-----------------------------------------------------------------
+kFlangerFeedback = 0.1
+
+aReverbEffectL flanger aReverbL, aEffectDelay, kFlangerFeedback
+aReverbEffectR flanger aReverbR, -1 * aEffectDelay, kFlangerFeedback
+
+; "If CPU usage goes to 100% at the end of reverb tails, or you get audio glitches in processes that shouldn't use too much CPU, using denorm before the culprit opcode or process might solve the problem."
+denorm aReverbEffectL, aReverbEffectR
+
+; send reverb+effect to reverb
+;-----------------------------------------------------------------
+;The filters on the right channel are slightly detuned compared to the left channel in order to create a stereo effect. -- droning will cause R to sound lower
+aReverbEffectL, aReverbEffectR freeverb aReverbEffectL, aReverbEffectR, kReverbSize * 0.95, kReverbDamping, 88200, 1
+
+; crossfade original reverb and reverb+effect+reverb
+aReverbL = (aReverbL * (1-kEffectAmount)) + ((aReverbEffectL * (kEffectAmount)) * 1.8)    ; reverb left seems to be louder than right
+aReverbR = (aReverbR * (1-kEffectAmount)) + ((aReverbEffectR * (kEffectAmount)) * 2.0)    ; reverb is less louder than the dry signal
+
+; a small kReverbSize needs amplification
+aReverbL = aReverbL * (((1-kReverbSize) * 1) + 1)
+aReverbR = aReverbR * (((1-kReverbSize) * 1) + 1)
 
 
-; NO EFFECT
-; averbl, averbr reverbsc arsendl, arsendr, kreverbtime, kdampfilt, sr, 0.2
+; ------------------------------------------------------------
+; Ducking
+; ------------------------------------------------------------
+
+kVCA_old init 1
+kVCAThreshold init 0.9
+kDuckingRetriggerThreshold init 0.9
+aTrigSignal init 0
+kDuckingTrigger init 0
+
+kDuckEnvelopeAttack init 0.1
+kDuckEnvelopeRelease init 2
+
+; Ducking VCA (gkDuckingVCA == 1)
+if (gkDuckingVCA == 1) then
+  aDuckingVCA = a(1 - gkVCA)
+else
+  aDuckingVCA = 1
+endif
+
+kDuckingTrigger trigger gkDuckingTrigger, 0.5, 0
+  
+if (kDuckingTrigger == 1) then
+  aTrigSignal = 1
+endif
+
+aDuckEnvelope follow2 aTrigSignal, kDuckEnvelopeAttack, (kDuckEnvelopeRelease * gkDuckingRelease)
+
+if (k(aDuckEnvelope) > kDuckingRetriggerThreshold) then
+  aTrigSignal = 0
+endif
+
+aDucking = aDuckingVCA^2 * (1 - aDuckEnvelope)^3
+
+if (k(aDucking) < 0.1) then   ; to slew the first part a bit (softer attack)
+  kDucking portk k(aDucking), 0.02
+  aDucking = a(kDucking)
+endif
 
 
-; OUTPUT, some clipping
-aoutl = ((averbl + (adelayl) + (ainl * kmutedry)) * 0.7)
-aoutr = ((averbr + (adelayr) + (ainr * kmutedry)) * 0.7)
-aclippedl clip aoutl, 2, 0.90
-aclippedr clip aoutr, 2, 0.90
-outs aclippedl, aclippedr
+; ------------------------------------------------------------
+; Output
+; ------------------------------------------------------------
+
+kReverbOnly portk gkReverbOnly, 0.75
+kWetOnly portk gkWetOnly, 0.5
+
+aOutputDryL    = (aInputL * (1-kReverbOnly) * (1-kWetOnly)) * ((aDucking * 0.4) + 0.6)   ; Ducking only on part of the Dry Signal
+aOutputDryR    = (aInputR * (1-kReverbOnly) * (1-kWetOnly)) * ((aDucking * 0.4) + 0.6)   ; Ducking only on part of the Dry Signal
+
+aOutputDelayL  = ((aDelayL * (1-gkSustainMode)) * aDucking)
+aOutputDelayR  = ((aDelayR * (1-gkSustainMode)) * aDucking)
+
+kReverbGain max 1, gkReverbOnly * 1.4         ; amplify the reverb only output
+
+aOutputReverbL = (aReverbL * aDucking) * kReverbGain
+aOutputReverbR = (aReverbR * aDucking) * kReverbGain
+
+
+; ------------------------------------------------------------
+; Detect clipping
+; ------------------------------------------------------------
+
+kOutputDelayDamping = kOutputDelayDamping + 0.0005
+
+kMax max k(abs((aOutputDryL + (aOutputDelayL * kOutputDelayDamping * (1-(gkDelayFeedback*0.3))) + aOutputReverbL) * 0.6)), 0
+kMax max k(abs((aOutputDryR + (aOutputDelayR * kOutputDelayDamping * (1-(gkDelayFeedback*0.3))) + aOutputReverbR) * 0.6)), kMax
+
+if (kMax > 0.90) then       ; clipping almost occurs, lower the delay
+  kOutputDelayDamping = kOutputDelayDamping - 0.2
+endif
+
+kOutputDelayDamping min kOutputDelayDamping, 1    ; should not be higher than 1
+kOutputDelayDamping max kOutputDelayDamping, 0.4  ; should not be lower than 0.4
+
+aOutputL = (aOutputDryL + (aOutputDelayL * kOutputDelayDamping * (1-(gkDelayFeedback*0.3))) + aOutputReverbL) * 0.6
+aOutputR = (aOutputDryR + (aOutputDelayR * kOutputDelayDamping * (1-(gkDelayFeedback*0.3))) + aOutputReverbR) * 0.6
+
+; after all Delay Damping efforts, use soft clip...
+aOutputL clip aOutputL, 0, 1 
+aOutputR clip aOutputR, 0, 1
+
+outs aOutputL, aOutputR
+
+
+; ------------------------------------------------------------
+; Clock pulse out
+; ------------------------------------------------------------
+
+kPulseTime_ms init 0
+kPulseTime_ms = (kPulseTime_ms > 0 ? kPulseTime_ms - (1000/kr) : 0)  ; subtract (1000/kr) milliseconds
+kPulseTime_ms max 0, kPulseTime_ms                                ; can't be lower than 0
+
+if (gkClockTick == 1) then ; freerun clock and clock tick
+  if (kPulseTime_ms <= 0) then
+    kPulseTime_ms = 20   ; ms
+  endif
+endif
+
+gkeol = kPulseTime_ms     ; set pulse
+kClockIn = 0              ; arm kClockIn trigger again
+gkClockTick = 0           ; arm gkClockTick trigger again
+
+endin
+
+
+; ------------------------------------------------------------
+; Instrument 2 (Clock)
+; ------------------------------------------------------------
+
+instr 2
+  gkClockTick metro 1/gkClockDelay_sec, 1
 endin
