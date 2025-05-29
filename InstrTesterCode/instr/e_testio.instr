@@ -1,0 +1,17 @@
+nebconfigbegin
+sr,48000
+ksmps,64
+-B,512
+-b,64
+nebconfigend
+
+instr 1
+
+ainl, ainr inch 1, 2
+if gksource == 1 then 
+    ainl = 0
+    ainr = 0
+endif
+outs ainl, ainr
+
+endin

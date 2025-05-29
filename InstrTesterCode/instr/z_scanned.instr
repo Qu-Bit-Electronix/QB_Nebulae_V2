@@ -1,0 +1,133 @@
+; Template Instrument
+; Qu-bit Electronix
+; Author: Stephen Hensley
+; San Clemente, CA
+; 2017
+;
+; Global Tables
+giCosine	ftgen	0, 0, 8193, 9, 1, 1, 90 ; Cosine Table
+
+; Global Data from External Software
+; All of the following globals are set from external software.
+; Controls are named after their hardware control name.
+; gilen[] - Array containing all file lengths
+; gkpitch - 
+; gkspeed - 
+; gkloopstart - sum of audio input and CV input
+; gkloopsize -  sum of audio input and CV input
+; gkdensity -  sum of audio input and CV input
+; gkoverlap -  sum of audio input and CV input
+; gkblend -  sum of audio input and CV input
+; gkwindow -  sum of audio input and CV input
+; gkfreeze - button/trigger combination
+; gknext - button/trigger combination
+; gkreset - button/trigger combination
+; gksource - button/trigger combination
+; gkrecord - button/trigger combination
+; gkfilesel - index of table containing audio file data. (Provides access to Audio Files)
+;giconfn ftgen 111, 0, 128, 27, 12, 1, 24, -1, 36, 0 ; pulse
+;giconfn ftgen 111, 0, 128, 10, 1 ; sine
+giconfn ftgen 111, 0, 128, 21, 1 ; whitenoise
+
+; Short Names (for instr_tester)
+gispgmtrxf1 ftgen 140, 0, 16384, -23, "./matrices/string-128.matrix"
+gispgmtrxf2 ftgen 141, 0, 16384, -23, "./matrices/grid-128,8"
+gispgmtrxf ftgen 142, 0, 16384, -23, "./matrices/grid-128,8"
+; Long Names (for nebulae hardware)
+;gispgmtrxf1 ftgen 140, 0, 16384, -23, "/home/alarm/Scanned/Code/matrices/string-128.matrix"
+;gispgmtrxf2 ftgen 141, 0, 16384, -23, "/home/alarm/Scanned/Code/matrices/grid-128,8"
+;gispgmtrxf ftgen 142, 0, 16384, -23, "/home/alarm/Scanned/Code/matrices/grid-128,8"
+
+; Global Vairiables
+gk_excite_env init 0.001
+
+
+instr 1
+; 1V/Oct stuff
+ilogmax = log(928.0) ; minus 30 for offset on ADC.
+ilogmin = log(30.0)
+kpitch = exp(gkpitch * (ilogmax - ilogmin) + ilogmin)
+; Hammers
+inumhammers = 3
+ihammersine ftgen 201, 0, 128, 10, 1
+ihammerwhite ftgen 202, 0, 128, 21, 1
+ihammerpulse ftgen 203, 0, 128, 27, 12, 1, 24, -1, 36, 0
+
+; Matrices
+inummatrices = 4
+;imattorus ftgen 301, 0, 16384, -23, "128,8-torus"
+;imatstring ftgen 302, 0, 16384, -23, "str-128.mat"
+;imatcircstring ftgen 303, 0, 16384, -23, "circstr_128.mat"
+;imatspiral ftgen 304, 0, 16384, -23, "spiral-8,16,128,2,1over2"
+
+kenveloping init 0
+; Reinit
+kresetting trigger gkreset, 0.5, 0
+
+if (kresetting == 1) then
+	event "i", 2, 0, 1.0
+	gkreset = 0
+endif
+
+; Inits for Scanu
+iscanrate = 0.01 ; modified current attempt
+;ivelf ftgen 112, 0, 128, -7, 0.02, 128, 0.01
+ivelf ftgen 112, 0, 128, -7, 0.12, 128, 0.01
+imassf ftgen 113, 0, 128, -7, 1, 128, 0.6
+icentrf ftgen 115, 0, 128, -7, 1, 64, 0, 64, 1
+idampf ftgen 116, 0, 128, -7, 1, 128, 1
+itrajn ftgen 117, 0, 128, -7, 0, 128, 128
+ilpos = 0.05
+irpos = 0.95
+idisp = 0 ; draw the masses
+ispringamount = 0.25
+;ispringamount = gkwindow 
+tablemix gispgmtrxf, 0, 16384, gispgmtrxf1, 0, 1.0-ispringamount, gispgmtrxf2, 0, ispringamount
+scanhammer gispgmtrxf, gispgmtrxf, 0, 1.0
+
+id = 8
+
+kpos = gkspeed
+kenv = gk_excite_env * 0.08
+kstrngth = kenv + (gkloopstart * 0.04)
+if kstrngth <= 0.001 then
+kstrngth = 0.0
+endif
+khammerblend = gkblend
+tablemix giconfn, 0, 128, ihammersine, 0, 1.0-khammerblend, ihammerwhite, 0, khammerblend
+scanhammer giconfn, giconfn, 0, 1.0
+kmass = 1.56 + (gkwindow * 3.0)
+;printks "mass: %f\n", 1.0, kmass
+kstif = ((gkdensity * gkdensity) / 4.0) + 0.0001
+kcentr = ((gkoverlap * gkoverlap) / 4.0) + 0.0001
+kdamp = (1.0 - gkloopsize) * -1.0
+ainl inch 1 
+a0 = ainl
+
+; Scan U
+scanu giconfn, iscanrate, ivelf, imassf, gispgmtrxf, icentrf, idampf, kmass, kstif, kcentr, kdamp, ilpos, irpos, kpos, kstrngth, a0, idisp, id
+kenv = 0
+
+; Scan S
+kfreq = kpitch
+kamp = 0.05
+itrajn ftgen 118, 0, 128, -7, 0, 128, 128
+a1 scans kamp, kfreq, itrajn, id, 4
+a1 dcblock2 a1
+
+; Sine Balance Ref
+afilt butlp a1, 8000
+aout clip afilt, 2, 0.95
+; Output 
+;outs aout, aout
+acomp compress aout, aout, 0, 48, 60, 3, 0.01, 0.5, 0.02
+acomp *= 7.5
+;acomp *= 8.0   
+out acomp
+
+endin
+
+; Envelope Generator Instr
+instr 2
+gk_excite_env transeg 0.001, 0.01, 2, 1, 0.1, -2, 0.001
+endin

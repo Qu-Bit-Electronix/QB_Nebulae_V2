@@ -1,0 +1,46 @@
+nebconfigbegin
+ksmps,16
+-B,2048
+-b,128
+sr,48000
+nebconfigend
+
+/****************
+ effects.instr
+
+ effects is a general purpose multifx processor.
+ It is a work in progress, and not completely implemented 
+    so you will notice not every control does something.
+
+ * Overview of controls *
+ * Pitch - Reverb Amount
+ * Speed - Delay Amount
+ * Start - Delay Time
+ * Size - Feedback
+ * Density - Reverb Time
+ * Overlap - Reverb Filt
+ * Blend - Dry/Wet
+ * Window - 
+ * Record - 
+ * File - 
+ * Source - 
+ * Reset - 
+ * Freeze - 
+ ****************/
+instr 1
+ainl, ainr inch 1, 2
+; set parameters
+ktime = (gkloopstart * 1.99) + 0.01
+kdelaytime portk ktime, 0.1
+kfeedback = gkloopsize
+; create a delay line
+abufout delayr 2.0
+atap1 deltap3 kdelaytime
+delayw ainl + (atap1 * kfeedback)
+amix = (atap1 * gkblend) + (ainl * (1.0 - gkblend))
+denorm amix, amix
+averbl, averbr reverbsc amix, amix, (gkdensity + 0.001), gkoverlap * 8000.0, sr, 0.1
+aoutl = (averbl * gkwindow) + (amix * (1.0 - gkwindow))
+aoutr = (averbr * gkwindow) + (amix * (1.0 - gkwindow))
+outs aoutl, aoutr
+endin
