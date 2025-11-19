@@ -7,8 +7,35 @@ import sys
 import time
 import leddriver
 import neb_globals
-# import threading
-# from multiprocessing import Process
+
+DEBOUNCE_STABLE_MS = 60      # time the signal must remain high
+EDGE_INTERVAL_SEC = 0.20     # minimum time between accepted edges
+
+def stable_high(sw, duration_ms=DEBOUNCE_STABLE_MS, sample_interval_ms=3):
+    """
+    Returns True only if the switch remains high for duration_ms continuously.
+    """
+    end = time.time() + (duration_ms / 1000.0)
+    while time.time() < end:
+        sw.update()
+        if not sw.state():
+            return False
+        time.sleep(sample_interval_ms / 1000.0)
+    return True
+
+def confirm_rising_edge(sw, last_time, min_interval=EDGE_INTERVAL_SEC, stable_ms=DEBOUNCE_STABLE_MS):
+    """
+    Accept a rising edge only if:
+    - Enough time has passed since last accepted edge.
+    - Signal remains high for stable_ms.
+    Returns (accepted, new_timestamp_or_old)
+    """
+    now = time.time()
+    if (now - last_time) < min_interval:
+        return False, last_time
+    if stable_high(sw, duration_ms=stable_ms):
+        return True, now
+    return False, last_time
 
 class CalibrationState(object):
     __slots__ = []
@@ -101,13 +128,18 @@ if len(sys.argv) > 1:
 else:
     arg = None
 collector = calibration_collector.CalibrationCollector()
-pitch_click = switch.Switch(22) # Pitch Encoder Click GPIO
+# We need to do some debouncing/check that it's actually held here...
+pitch_click = switch.Switch(22)  # Pitch Encoder Click GPIO
 pitch_click.update()
-speed_click = switch.Switch(26) # Speed Encoder Click GPIO
+speed_click = switch.Switch(26)  # Speed Encoder Click GPIO
 speed_click.update()
-if pitch_click.state() == True or arg == 'force':
+
+# Confirm initial press (ignore brief noise)
+pitch_start = pitch_click.state() and stable_high(pitch_click)
+speed_start = speed_click.state() and stable_high(speed_click)
+
+if pitch_start or (len(sys.argv) > 1 and sys.argv[1] == 'force'):
     launch_bootled()
-    #time.sleep(2)
     print 'Calibration commencing'
     collector.collect()
     # Clear out settings and factory reset
@@ -121,29 +153,43 @@ if pitch_click.state() == True or arg == 'force':
     os.system(cmd)
     if neb_globals.remount_fs is True:
         os.system("sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh ro")
-elif speed_click.state() == True or arg == 'force-voct':
+elif speed_start or (len(sys.argv) > 1 and sys.argv[1] == 'force-voct'):
     print '1V/Oct Manual Calibration Starting...'
     ui = CalibrationUi()
-    now = time.time()
-    last_run = now
-    done_running = False
     ui.set_hook(CalibrationState.AWAITING_3V, lambda: collector.collect_v1_voct())
     ui.set_hook(CalibrationState.DONE, lambda: collector.collect_v3_voct_and_store())
 
-    period = 0.016 # 60Hz
+    period = 0.016  # 60Hz
     next_run = time.time()
+    done_running = False
+    last_speed_edge_time = 0.0
+    last_pitch_edge_time = 0.0
+
     while not done_running:
         speed_click.update()
         pitch_click.update()
+
+        # Debounced exit press
         if speed_click.risingEdge():
-            ui.change_state(CalibrationState.EXIT)
+            accepted, last_speed_edge_time = confirm_rising_edge(
+                speed_click, last_speed_edge_time)
+            if accepted:
+                ui.change_state(CalibrationState.EXIT)
+
+        # Debounced state advance
         if pitch_click.risingEdge():
-            ui.inc_state()
+            accepted, last_pitch_edge_time = confirm_rising_edge(
+                pitch_click, last_pitch_edge_time)
+            if accepted:
+                ui.inc_state()
+
         if ui.state == CalibrationState.EXIT:
             done_running = True
+
         if time.time() > next_run:
             ui.tick()
             next_run += period
+
     print '1V/Oct Manual Calibration Complete!'
 else:
     print 'Skipping Calibration'
