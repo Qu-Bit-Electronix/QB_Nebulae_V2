@@ -250,7 +250,7 @@ itempidx = 0
 loop:
     if gichn[itempidx] == 2 then
         giwoffset = itempidx + gifile_right_offset
-        giwoffset ftgen (itempidx+gifile_right_offset), 0, 0, 1, gSname[itempidx], 0, 0, 2
+        giwoffset ftgen (itempidx+gifile_right_offset), 0, 0, -1, gSname[itempidx], 0, 0, 2
     endif
     itempidx += 1
     if (itempidx < 100) igoto loop
@@ -860,8 +860,8 @@ if kgrainrmsR > 0.20 then
     kgrainrmsR = 0.20
 endif
 
-agrainCompL gain agrainL, kgrainrmsL, 10
-agrainCompR gain agrainR, kgrainrmsR, 10
+agrainCompL = agrainL
+agrainCompR = agrainR
 /*
  * Work in progress for scaling amplitude more effectively.
 if kgrainsizel < 1 / kgrainfreq then

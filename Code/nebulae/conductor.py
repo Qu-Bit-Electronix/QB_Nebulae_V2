@@ -79,7 +79,7 @@ gipeak[] init 100
         glen_arrayinit.append('\n')
         for i,f in enumerate(self.filehandler.files):
             #fsco_lines.append("f " + str(i + 1) + " 0 0 1 \"" + f + "\" 0 0 0\n")
-            fsco_lines.append("f " + str(400 + i) + " 0 0 1 \"" + f + "\" 0 0 1\n")
+            fsco_lines.append("f " + str(400 + i) + " 0 0 -1 \"" + f + "\" 0 0 1\n")
             glen_arrayinit.append("gSname[" + str(i) +"] = \"" + f + "\"\n")
             glen_arrayinit.append("gilen[" + str(i) +"] filelen \"" + f + "\"\n")
             glen_arrayinit.append("gichn[" + str(i) +"] filenchnls \"" + f + "\"\n")
