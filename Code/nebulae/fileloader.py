@@ -90,6 +90,18 @@ class FileLoader(object):
             if neb_globals.remount_fs is True:
                 os.system("sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh ro")
 
+    def deleteFileFromUSB(self, filename):
+        if neb_globals.remount_fs is True:
+            os.system("sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh rw")
+        self.mount()
+        if self.isUSBMounted():
+            target = "/mnt/memory/" + filename
+            if os.path.isfile(target):
+                os.remove(target)
+            self.umount()
+        if neb_globals.remount_fs is True:
+            os.system("sh /home/alarm/QB_Nebulae_V2/Code/scripts/mountfs.sh ro")
+
     def copyType(self, fileType):
         fileDir = '/mnt/memory'
         files = []

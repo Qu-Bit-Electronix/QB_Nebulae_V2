@@ -59,6 +59,10 @@ class ControlHandler(object):
         self.writing_buffer = False
         self.buffer_failure = False
         self.performance_thread = None
+        self.deleteHoldStart = None
+        self.deleteFileFlag = False
+        self.deleteFileIdx = None
+        self.DELETE_HOLD_MS = 2000
 
         # Set Defaults/Read Config
         digitalControlList = [
@@ -384,6 +388,22 @@ class ControlHandler(object):
         if self.editFunctionFlag.has_key(name):
             self.editFunctionFlag[name] = True
 
+    def getDeleteHoldProgress(self):
+        if self.deleteHoldStart is None:
+            return 0.0
+        return min(1.0, float(self.now - self.deleteHoldStart) / self.DELETE_HOLD_MS)
+
+    def getDeleteFileFlag(self):
+        return self.deleteFileFlag
+
+    def getDeleteFileIdx(self):
+        return self.deleteFileIdx
+
+    def clearDeleteFileFlag(self):
+        self.deleteFileFlag = False
+        self.deleteFileIdx = None
+        self.deleteHoldStart = None
+
     def updateAll(self): 
         #GPIO.output(self.eol_pin, False) # For debugging
         numChanged = 0
@@ -528,6 +548,19 @@ class ControlHandler(object):
                                         print("Write thread still running.")
                                 print "channel: " + chn.name + " has changed."
                                 self.channeldict["file"].setIgnoreNextButton()
+            if self.currentInstr == "a_granularlooper" and source_state == 0:
+                file_held = self.channeldict["filestate"].getValue() == 1
+                reset_raw, _ = self.channeldict["reset"].input.getRawValues("button")
+                if file_held and reset_raw == 1:
+                    if self.deleteHoldStart is None:
+                        self.deleteHoldStart = self.now
+                    elif self.deleteFileFlag == False and self.now - self.deleteHoldStart >= self.DELETE_HOLD_MS:
+                        self.deleteFileFlag = True
+                        self.deleteFileIdx = self.getValue("file")
+                else:
+                    self.deleteHoldStart = None
+            else:
+                self.deleteHoldStart = None
         #GPIO.output(self.eol_pin, True) # for debugging
 
     def printAllControls(self):

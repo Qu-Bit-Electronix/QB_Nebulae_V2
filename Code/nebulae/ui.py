@@ -64,7 +64,9 @@ class UserInterface(object):
         elif cur_bank == "puredata":
             cnt = self.puredata_fhandle.numFiles()
         self.controlhandler.setInstrSelNumFiles(cnt)
-        self.reload_flag = False # Flag to reload the whole program. 
+        self.reload_flag = False # Flag to reload the whole program.
+        self.delete_file_request = False
+        self.delete_file_idx = None
         self.alt_file_bright = 0.0
         self.alt_file_cnt = 0.0
         self.blink_counter = 0
@@ -121,7 +123,9 @@ class UserInterface(object):
             self.set_button_led("source", self.controlhandler.getLEDValue("source"))
             self.set_button_led("record", self.controlhandler.getLEDValue("record"))
             self.set_button_led("next", self.controlhandler.getLEDValue("file"))
-            if self.controlhandler.getEditFunctionFlag("reset") == True:
+            if self.controlhandler.getDeleteHoldProgress() > 0.0 or self.controlhandler.getDeleteFileFlag():
+                self.animateDeleteHold()
+            elif self.controlhandler.getEditFunctionFlag("reset") == True:
                 self.animateEditFunction("reset")
             elif self.controlhandler.getEditFunctionFlag("record") == True:
                 self.animateEditFunction("record")
@@ -230,6 +234,26 @@ class UserInterface(object):
         self.set_button_led("source", values[2])
         self.set_button_led("reset", values[3])
         self.set_button_led("freeze", values[4])
+
+    def animateDeleteHold(self):
+        if self.controlhandler.getDeleteFileFlag():
+            idx = self.controlhandler.getDeleteFileIdx()
+            self.controlhandler.clearDeleteFileFlag()
+            if self.controlhandler.currentBank == 'factory':
+                tempidx = self.factoryinstr_fhandle.getIndex(self.controlhandler.currentInstr)
+            else:
+                tempidx = self.userinstr_fhandle.getIndex(self.controlhandler.currentInstr)
+            self.controlhandler.setInstrSelIdx(tempidx)
+            self.controlhandler.setInstrSelBank(self.controlhandler.currentBank)
+            self.delete_file_request = True
+            self.delete_file_idx = idx
+            self.set_button_led("reset", 1.0)
+            self.set_button_led("next", 1.0)
+            self.reload_flag = True
+        else:
+            progress = self.controlhandler.getDeleteHoldProgress()
+            self.set_button_led("reset", progress)
+            self.set_button_led("next", progress)
 
     def animateEditFunction(self, name):
         ## TODO: The abstraction could actually do this animation for any of the four buttons (file, source, reset, freeze)
@@ -795,6 +819,16 @@ class UserInterface(object):
 
     def getReloadRequest(self):
         return self.reload_flag
+
+    def getDeleteFileRequest(self):
+        return self.delete_file_request
+
+    def getDeleteFileIdx(self):
+        return self.delete_file_idx
+
+    def clearDeleteFileRequest(self):
+        self.delete_file_request = False
+        self.delete_file_idx = None
 
     def setAltNextLed(self, mode):
         fade_inc = 0.009

@@ -62,3 +62,9 @@ class FileHandler(object):
     def numFiles(self):
         return self.fileCount
 
+    def deleteFile(self, idx):
+        if idx < len(self.files):
+            os.remove(self.files[idx])
+            return True
+        return False
+

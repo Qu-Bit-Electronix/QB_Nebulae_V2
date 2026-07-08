@@ -130,6 +130,14 @@ class Nebulae(object):
         if request == True:
             self.first_run = False
             print "Received Reload Request from UI"
+            if self.ui.getDeleteFileRequest():
+                idx = self.ui.getDeleteFileIdx()
+                print "Deleting audio file at index " + str(idx)
+                filename = os.path.basename(self.orc_handle.filehandler.files[idx])
+                floader = fileloader.FileLoader()
+                floader.deleteFileFromUSB(filename)
+                self.orc_handle.filehandler.deleteFile(idx)
+                self.ui.clearDeleteFileRequest()
             print "index of new instr is: " + str(self.c_handle.instr_sel_idx)
             self.new_instr = self.ui.getNewInstr()
             print "new instr: " + self.new_instr
